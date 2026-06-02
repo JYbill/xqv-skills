@@ -20,6 +20,12 @@
 
 用于代码注释治理。适合补注释、调整注释、review 注释质量，以及判断复杂逻辑、数据转换、输出模板、字符串拼接展示文案和 Agent 提示边界中哪些内容值得注释。
 
+### react-ddt
+
+用于审查并修正 React hook、React 组件和 TSX 文件里的职责放置错误。适合把与 React state 无关的纯函数抽到同目录 `util.ts`，把静态常量抽到 `enum.ts`，把组件 props、hook 参数和局部业务类型抽到 `types.ts`，同时避免为了形式新增没有收益的薄包装。
+
+补充约束：它和 `ddt` 不是替代关系；`ddt` 负责反对无收益的过度封装，`react-ddt` 负责让 React 文件只保留渲染、hook 调用、事件 handler、state / ref / effect 强绑定逻辑和必要的 JSX 分支。
+
 ### search
 
 用于按问题场景使用 GitHub MCP、Context7 MCP、Exa WebSearch MCP 搜索并回答。适合用户要求联网检索、查 GitHub 项目和源码、核对框架或 SDK 文档、查 API 用法，以及查官网、博客、产品信息、新闻和对比资料时使用。
