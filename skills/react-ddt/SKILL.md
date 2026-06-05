@@ -109,12 +109,13 @@ API 请求参数、响应 DTO 和数据库结构不要放 React 组件目录的 
 
 下面这些默认需要修：
 
-- `CourseSelector.tsx` 顶层同时定义菜单尺寸常量和 `buildSelectedSummary()`
-- `useCourseSelection.ts` 里定义不读取 hook state 的 `isSameAllCourseSelection()`
-- 组件文件里定义 `interface xxxProps`，同目录已有 `types.ts`
+- `ExamplePanel.tsx` 顶层同时定义面板尺寸常量和 `buildSelectedSummary()`
+- `ExampleList.tsx` 顶层定义 `buildInitialRange()`；它只根据入参构造默认范围，不读取组件 state、ref 或生命周期，应该放同级 `util.ts`
+- `useExampleSelection.ts` 里定义不读取 hook state 的 `isSameSelection()`
+- 组件文件里定义 `interface ExampleProps`，同目录已有 `types.ts`
 - hook 主文件里定义参数 interface，而同目录没有 `types.ts`
-- TSX 里散落 `curriculum-`、`course-` 这类 ID 前缀字符串
-- TSX 里散落用于菜单定位的宽度、高度、gap、padding 数字
+- TSX 里散落 `example-`、`item-` 这类 ID 前缀字符串
+- TSX 里散落用于浮层定位的宽度、高度、gap、padding 数字
 - util 里重复写和 enum 里同语义的固定字符串或数字
 
 ## 示例
@@ -122,18 +123,21 @@ API 请求参数、响应 DTO 和数据库结构不要放 React 组件目录的 
 错误写法：
 
 ```tsx
-const MENU_PANEL_WIDTH = 262;
+const PANEL_WIDTH = 280;
 
-interface UseCourseSelectionParams {
-  activeSessionId: string;
+interface UseExampleSelectionParams {
+  selectedIds: string[];
+  allIds: string[];
 }
 
-function isSameAllCourseSelection(selectedCourse, allCourseSelection) {
-  return selectedCourse.ids.length === allCourseSelection.ids.length;
+function isAllSelected(selectedIds: string[], allIds: string[]) {
+  return selectedIds.length === allIds.length;
 }
 
-export function useCourseSelection(params: UseCourseSelectionParams) {
-  const selected = useMemo(() => isSameAllCourseSelection(a, b), [a, b]);
+export function useExampleSelection(params: UseExampleSelectionParams) {
+  const allSelected = useMemo(() => isAllSelected(params.selectedIds, params.allIds), [params.selectedIds, params.allIds]);
+
+  return { allSelected };
 }
 ```
 
@@ -141,28 +145,85 @@ export function useCourseSelection(params: UseCourseSelectionParams) {
 
 ```ts
 // enum.ts
-export const courseSelectorMenuPanelWidth = 262;
+export const optionPanelWidth = 280;
 ```
 
 ```ts
 // types.ts
-export interface UseCourseSelectionParams {
-  activeSessionId: string;
+export interface UseExampleSelectionParams {
+  selectedIds: string[];
+  allIds: string[];
 }
 ```
 
 ```ts
 // util.ts
-/** 判断当前全选摘要是否已经覆盖最新课程映射。 */
-export function isSameAllCourseSelection(selectedCourse, allCourseSelection) {
-  return selectedCourse.ids.length === allCourseSelection.ids.length;
+/** 判断当前选中项是否覆盖全部候选项。 */
+export function isAllSelected(selectedIds: string[], allIds: string[]) {
+  return selectedIds.length === allIds.length;
 }
 ```
 
 ```tsx
-// useCourseSelection.ts
-export function useCourseSelection(params: UseCourseSelectionParams) {
-  const selected = useMemo(() => isSameAllCourseSelection(a, b), [a, b]);
+// useExampleSelection.ts
+import type { UseExampleSelectionParams } from "./types";
+import { isAllSelected } from "./util";
+
+/** 管理示例选择状态。 */
+export function useExampleSelection(params: UseExampleSelectionParams) {
+  const allSelected = useMemo(() => isAllSelected(params.selectedIds, params.allIds), [params.selectedIds, params.allIds]);
+
+  return { allSelected };
+}
+```
+
+另一个错误写法：
+
+```tsx
+// ExampleList.tsx
+function buildInitialRange(value?: string): { start: string; end: string } | null {
+  const trimmedValue = value?.trim();
+
+  if (!trimmedValue) return null;
+
+  return {
+    start: `${trimmedValue}-start`,
+    end: `${trimmedValue}-end`,
+  };
+}
+
+export function ExampleList(props: ExampleListProps) {
+  const [range] = useState(() => buildInitialRange(props.initialValue));
+
+  return <RangeView value={range} />;
+}
+```
+
+更合适的放置方式：
+
+```ts
+// util.ts
+/** 根据外部传入值构造初始范围；空值不生成范围。 */
+export function buildInitialRange(value?: string): { start: string; end: string } | null {
+  const trimmedValue = value?.trim();
+
+  if (!trimmedValue) return null;
+
+  return {
+    start: `${trimmedValue}-start`,
+    end: `${trimmedValue}-end`,
+  };
+}
+```
+
+```tsx
+// ExampleList.tsx
+import { buildInitialRange } from "./util";
+
+export function ExampleList(props: ExampleListProps) {
+  const [range] = useState(() => buildInitialRange(props.initialValue));
+
+  return <RangeView value={range} />;
 }
 ```
 
