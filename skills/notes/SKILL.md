@@ -13,7 +13,7 @@ description: 当用户要求补注释、调整注释、review 注释质量、沉
 注释的对象是函数或方法本身，不是函数内部每一行。普通赋值、普通取字段、明显的空值回退、一眼能看懂的单条件判断，不要逐行配旁白。
 导出函数、React 组件、custom hook、class 方法优先使用简短 JSDoc，说明入参、返回结果、调用时机或业务含义。非导出的局部函数和事件处理器可以使用函数上方的行注释，但也必须有。
 多行相似取值如果需要说明，优先在这一组代码上方写一行总结注释。空行只用于分隔不同业务阶段、不同控制流或确实需要停顿的说明。
-复杂判断、连续判断、复杂三元表达式、循环、switch、数字计算、字段语义、数据结构转换、展示文案拼接、输出模板和 prompt 边界，仍然要补充说明判断依据、计算口径、转换后的读取方式、最终用户可见效果或模型可见边界。
+复杂判断、连续判断、复杂三元表达式、三元表达式参与对象 / 数组展开、解构参数直接拼接模板字符串、循环、switch、数字计算、字段语义、数据结构转换、展示文案拼接、输出模板和 prompt 边界，仍然要补充说明判断依据、计算口径、转换后的读取方式、最终用户可见效果或模型可见边界。
 不要写“获取某某”“设置某某”“返回某某”“处理某某”这种表面注释。简单函数也要说明它在业务里的作用、触发时机或约束边界。不要把十几个字段取值逐行解释。不要写长段落，一条注释只讲一个重点。
 
 ### 前后端通用示例
@@ -32,6 +32,19 @@ if (Number.isFinite(attendanceRateNumber) && Number.isFinite(attendanceRateAvera
 
 // 有姓名时拼成 学生A、学生B、学生C 这种展示形式，不展示内部 studentId。
 const quickAnswerTopStudentText = `${quickAnswerTopStudentNames.join("、")}同学互动积极`;
+
+const sessionPayload = {
+  sessionId,
+  // 只有历史会话原本置顶时才透传 pinned，避免把未置顶状态当成用户本次改动提交。
+  ...(previousSessionPinned ? { pinned: true } : {}),
+  // selectedCourse 允许为 null，只有 undefined 表示本次没有课程选择字段，避免覆盖已有会话选择。
+  ...(sessionSelectedCourse !== undefined ? { selectedCourse: sessionSelectedCourse } : {}),
+};
+
+const courseGroupKeys = selectedCourseGroups.map(
+  // curriculumId 与排序后的 courseIds 共同组成稳定 key，避免同一组合因选择顺序不同重复缓存。
+  ([curriculumId, courseIds]) => `${curriculumId}:${[...courseIds].sort((a, b) => a - b).join(",")}`,
+);
 ```
 
 ## 前端 React 注释
