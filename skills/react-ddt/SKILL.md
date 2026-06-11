@@ -56,6 +56,8 @@ React hook 主文件只保留 hook 自身的 state、ref、memo、effect、callb
 
 如果函数虽然写在组件里，但只是因为要读 `props` 或 `state`，且可以通过参数完整传入，就应该抽离，让组件只负责把参数传进去。
 
+这个判断还有一个前提：抽离后要降低阅读成本。只被调用一次、函数体只是单行包装已有工具函数、类型转换或空值兜底的薄 helper，不应该为了满足“纯函数放 util”而新增导出函数；直接把表达式写在调用处，必要时用局部变量承接。
+
 如果函数必须直接操作 `setState`、读取 ref、处理事件对象、关闭弹窗、发起当前组件的副作用，通常保留在组件或 hook 主文件里。它属于 React 交互逻辑，不要为了形式抽成 util。
 
 ## 判断常量是否应该抽离
@@ -99,11 +101,13 @@ API 请求参数、响应 DTO 和数据库结构不要放 React 组件目录的 
 
 如果一段逻辑本来就是组件事件 handler 里的两三行 state 更新，不要抽到 util。
 
+如果一个纯函数只被调用一次，且函数体只是单行包装已有工具函数、类型转换或空值兜底，优先内联到调用处；不要抽成 util 导出函数。抽离是为了复用或隔离复杂判断，不是给简单表达式取一个更长的名字。
+
 如果一个类型只是某个 props 的一行字段别名，不要为了拆分再造一层薄类型，直接写进 props 类型里。
 
 如果一个常量只用于解释复杂业务状态或跨多个文件复用，才给它更强的语义名称。不要把所有单次出现的字面量都搬到 `enum.ts`。
 
-拿不准时按这句话判断：React 文件里只留下 React 相关的阅读路径，普通计算逻辑去 util，固定配置去 enum，类型去 types。
+拿不准时按这句话判断：React 文件里只留下 React 相关的阅读路径，普通计算逻辑去 util，固定配置去 enum，类型去 types；但单次使用的薄包装逻辑优先留在调用处。
 
 ## 反模式清单
 
@@ -112,6 +116,7 @@ API 请求参数、响应 DTO 和数据库结构不要放 React 组件目录的 
 - `ExamplePanel.tsx` 顶层同时定义面板尺寸常量和 `buildSelectedSummary()`
 - `ExampleList.tsx` 顶层定义 `buildInitialRange()`；它只根据入参构造默认范围，不读取组件 state、ref 或生命周期，应该放同级 `util.ts`
 - `useExampleSelection.ts` 里定义不读取 hook state 的 `isSameSelection()`
+- `util.ts` 里新增只被调用一次的 `normalizeSignInTemplateCourseId()`；函数体只是 `normalizePositiveFiniteNumber(courseId) ?? null`，应该内联到调用处
 - 组件文件里定义 `interface ExampleProps`，同目录已有 `types.ts`
 - hook 主文件里定义参数 interface，而同目录没有 `types.ts`
 - TSX 里散落 `example-`、`item-` 这类 ID 前缀字符串
@@ -226,6 +231,29 @@ export function ExampleList(props: ExampleListProps) {
   return <RangeView value={range} />;
 }
 ```
+
+过度抽离的错误写法：
+
+```ts
+// util.ts
+export function normalizeSignInTemplateCourseId(courseId: string | number) {
+  return normalizePositiveFiniteNumber(courseId) ?? null;
+}
+```
+
+```tsx
+// SignInTemplate.tsx
+const courseId = normalizeSignInTemplateCourseId(params.courseId);
+```
+
+更合适的写法：
+
+```tsx
+// SignInTemplate.tsx
+const courseId = normalizePositiveFiniteNumber(params.courseId) ?? null;
+```
+
+这个 helper 只被调用一次，函数体也只是给已有 `normalizePositiveFiniteNumber` 补 `?? null`。抽出去没有复用收益，反而让读者多跳一次文件。
 
 ## 输出要求
 
