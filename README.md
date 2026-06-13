@@ -32,6 +32,14 @@
 
 用于 TypeScript 类型问题处理。适合修复编译错误、消除 `any`、编写泛型、条件类型、类型守卫，以及提升类型推导和 IntelliSense 质量。
 
+### upgrade-project
+
+用于项目升级、工具链现代化和迁移。适合把旧 JavaScript/TypeScript 工具迁移到新工具，例如 Prettier 到 Oxfmt、ESLint 到 Oxlint、Jest 到 Vitest、CJS 到 ESM、旧 Node 版本到新 Node 版本。
+
+使用原则：先确认源技术、目标技术和本次范围，再检查脚本、依赖、锁文件、配置、lint-staged 和未提交改动；已有引用资料时先读取对应 `references/<迁移名>/index.md`，再做最小必要改动，并使用项目已有命令验证结果。
+
+补充约束：保持迁移差异窄，不把格式化、lint、测试框架、模块系统、CI、业务代码等非本次范围改动混进同一次迁移；命令、包名或计划和项目事实不匹配时，必须说明偏差，不能临时编造绕法。
+
 ## opencode skill
 
 ### github
