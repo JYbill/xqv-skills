@@ -30,14 +30,12 @@
 1. 根据 Git 信息生成镜像 tag，tag 格式见同目录 `template.md`。
 2. 服务镜像名固定为 `backend-rag`。
 3. 先构建 `install` target。
-4. 并行构建并验证：
-   - `format` target；
-   - `lint` target；
-   - `test` target。
+4. 并行执行两组校验：
+   - 第一组：先构建 `format` target，再构建 `lint` target；
+   - 第二组：构建 `test` target。
 5. 只要 format / lint / test 任一失败，脚本直接失败，不继续构建 production 镜像。
-6. 构建 `build` target。
-7. 构建 `production` target，并给本地镜像打 `backend-rag` 标签。
-8. 默认推送到脚本中定义的 registry；使用 `-s` 时导出 `images.tar`。
+6. 直接构建 `production` target，并给本地镜像打 `backend-rag` 标签；`production` 阶段通过 `COPY --from=build` 自动触发 `build` 阶段。
+7. 默认推送到脚本中定义的 registry；使用 `-s` 时导出 `images.tar`。
 
 注意：`git describe --tags --abbrev=0` 依赖仓库已有 tag。没有任何 Git tag 时，脚本会在生成镜像 tag 阶段失败；不要把这种失败误判为 Docker 构建失败。
 
@@ -87,11 +85,11 @@
 
 1. **统一入口。** 部署和正式镜像构建走 `docker-build.sh`，不要在文档或脚本中分散维护多套 `docker build` 命令。
 2. **平台映射清楚。** `-p x86-debian` 对应 `x86-debian.Dockerfile`。新增平台时，新增 `<platform>.Dockerfile`，并确保脚本无需额外分支即可找到。
-3. **先验证再发布。** `format`、`lint`、`test`、`build` 是 production 镜像前置条件，不要为了加快发布绕过这些 target。
+3. **先验证再发布。** `format`、`lint`、`test` 是 production 镜像前置校验；`production` 会自动依赖 `build` 阶段产出 `dist`，不要为了加快发布绕过这些 target。
 4. **保持缓存友好。** 依赖清单先复制、安装依赖后再复制源码，避免每次源码改动都重新安装依赖。
 5. **不要复制 registry 密码到文档。** `docker-build.sh` 里已有 registry 登录逻辑。迁移或泛化这套流程时，优先改为环境变量或 CI secret，不要把账号密码复制进 skill、AGENTS.md 或公开文档。
 6. **本地导出用 `-s`。** 需要离线交付镜像时使用 `-s` 生成 `images.tar`，不要手写另一套 save 命令。
-7. **构建失败按阶段定位。** install / format / lint / test / build / production 任一阶段失败时，先看失败阶段日志，不要直接改 production 阶段掩盖前置问题。
+7. **构建失败按阶段定位。** install / format / lint / test / production（含其依赖的 build）任一阶段失败时，先看失败阶段日志，不要直接改 production 阶段掩盖前置问题。
 
 ## 推荐执行流程
 

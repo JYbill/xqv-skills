@@ -38,14 +38,13 @@ bash ./docker-build.sh -p x86-debian -s
 
 ```text
 install
-  ├─ format
-  ├─ lint
+  ├─ format → lint
   └─ test
-build
 production
+  └─ 自动依赖 build
 ```
 
-`format`、`lint`、`test` 任一失败时，不继续构建 `build` 和 `production`。
+`format`、`lint`、`test` 任一失败时，不继续构建 `production`。构建 `--target production` 时，Docker 会因为 `COPY --from=build` 自动构建 `build` 阶段，不需要单独执行 `--target build`。
 
 ## 汇报模板
 
@@ -55,7 +54,7 @@ production
 变更：
 - 明确 `x86-debian.Dockerfile` 是默认 Dockerfile。
 - 明确 `docker-build.sh -p x86-debian` 是统一构建与部署入口。
-- 记录 Docker 多阶段构建顺序：install → format/lint/test → build → production。
+- 记录 Docker 多阶段构建顺序：install → (format → lint) 与 test 并行 → production 自动依赖 build。
 - 记录默认推送 registry 和 `-s` 导出 `images.tar` 的区别。
 
 验证：
