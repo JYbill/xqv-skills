@@ -38,6 +38,14 @@
 
 用于根据指定代码文件生成清晰的人类友好总结文档。适合用户要求总结某个模块、tool、service、接口链路、核心逻辑、影响范围或 TODO 时使用。
 
+### upgrade-project
+
+用于项目升级、工具链现代化和迁移。适合把旧 JavaScript/TypeScript 工具迁移到新工具，例如 Prettier 到 Oxfmt、ESLint 到 Oxlint、Jest 到 Vitest、CJS 到 ESM、旧 Node 版本到新 Node 版本。
+
+使用原则：先确认源技术、目标技术和本次范围，再检查脚本、依赖、锁文件、配置、lint-staged 和未提交改动；已有引用资料时先读取对应 `references/<迁移名>/index.md`，再做最小必要改动，并使用项目已有命令验证结果。
+
+补充约束：保持迁移差异窄，不把格式化、lint、测试框架、模块系统、CI、业务代码等非本次范围改动混进同一次迁移；命令、包名或计划和项目事实不匹配时，必须说明偏差，不能临时编造绕法。
+
 ## oma-skills
 
 ### github
