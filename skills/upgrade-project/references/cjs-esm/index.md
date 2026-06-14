@@ -18,25 +18,13 @@
 
 默认目标很明确：
 
-1. 在 `package.json` 中定义：
-   ```json
-   {
-     "type": "module"
-   }
-   ```
-2. 在 `tsconfig.json` 的 `compilerOptions` 中定义：
-   ```json
-   {
-     "compilerOptions": {
-       "verbatimModuleSyntax": true
-     }
-   }
-   ```
+1. 在 `package.json` 中将 `type` 设置为 `module`。
+2. 在 TypeScript 配置的 `compilerOptions` 中将 `verbatimModuleSyntax` 设置为 `true`。
 3. 让所有只作为类型使用的导入都使用 `import type` 或内联 `type` 标记。
-4. 迁移后运行一次类型检查：
-   - 如果 `package.json` 有 `typecheck` 脚本，运行项目自己的 `typecheck`。
-   - 如果没有，使用 `tsgo --noEmit` 或 `tsc --noEmit`。
+4. 迁移后运行一次类型检查。
 5. 如果类型检查暴露大量 `import type` 相关错误，按文件或目录分片，安排尽可能多的子代理并行修复。
+
+配置片段、类型导入示例、子代理任务和汇报模板见同目录 `template.md`。
 
 ## 默认迁移边界
 
@@ -45,7 +33,7 @@
 默认要做：
 
 - 修改 `package.json` 的 `type` 为 `module`。
-- 修改 `tsconfig.json`，加入或更新 `compilerOptions.verbatimModuleSyntax` 为 `true`。
+- 修改 TypeScript 配置，加入或更新 `compilerOptions.verbatimModuleSyntax` 为 `true`。
 - 修复类型导入：`import type`、`export type`、`import { type Foo }`。
 - 运行类型检查并根据错误继续修复。
 
@@ -108,35 +96,13 @@
 
 ### package.json
 
-如果没有 `type` 字段，新增：
-
-```json
-{
-  "type": "module"
-}
-```
-
-如果已有 `"type": "commonjs"`，改成：
-
-```json
-{
-  "type": "module"
-}
-```
+如果没有 `type` 字段，新增 `"type": "module"`。如果已有 `"type": "commonjs"`，改成 `"type": "module"`。具体片段见同目录 `template.md`。
 
 不要因为本步骤顺手改脚本、依赖或发布字段。除非用户明确要求，本迁移只关心模块类型声明。
 
 ### tsconfig.json
 
-在 `compilerOptions` 中设置：
-
-```json
-{
-  "compilerOptions": {
-    "verbatimModuleSyntax": true
-  }
-}
-```
+在 `compilerOptions` 中设置 `verbatimModuleSyntax: true`。具体片段见同目录 `template.md`。
 
 如果项目使用 `extends` 继承多个 TypeScript 配置，先确认当前项目实际执行类型检查时使用哪一个配置文件。优先修改项目自己的主 `tsconfig.json`；如果仓库约定使用 `tsconfig.build.json` 或类似文件做类型检查，则按实际命令涉及的配置处理，并在汇报里说明。
 
@@ -146,52 +112,15 @@
 
 ### 只作为类型使用
 
-将普通导入改成 `import type`：
-
-```ts
-import type { UserDto } from "./user.dto";
-```
-
-默认导入也可以使用 `import type`：
-
-```ts
-import type UserConfig from "./user-config";
-```
-
-命名空间类型导入使用：
-
-```ts
-import type * as PrismaTypes from "./generated";
-```
+只作为类型使用的普通导入、默认导入、命名空间导入都应改成类型导入。具体写法见同目录 `template.md`。
 
 ### 同一个模块同时导入类型和值
 
-可以使用内联 `type`，避免拆成两条导入：
-
-```ts
-import { createUser, type UserDto } from "./user";
-```
-
-如果周围代码已经习惯拆分导入，也可以拆成两条，优先保持项目既有风格：
-
-```ts
-import { createUser } from "./user";
-import type { UserDto } from "./user";
-```
+可以使用内联 `type`，避免拆成两条导入。如果周围代码已经习惯拆分导入，也可以拆成两条，优先保持项目既有风格。具体写法见同目录 `template.md`。
 
 ### 类型导出
 
-只导出类型时使用：
-
-```ts
-export type { UserDto } from "./user.dto";
-```
-
-同时导出类型和值时使用：
-
-```ts
-export { createUser, type UserDto } from "./user";
-```
+只导出类型时使用 `export type`；同时导出类型和值时使用内联 `type`。具体写法见同目录 `template.md`。
 
 ### 不要误改运行时值
 
@@ -200,7 +129,7 @@ export { createUser, type UserDto } from "./user";
 - 类被 `new`、`extends`、`instanceof` 使用；
 - 枚举、常量、函数、对象在运行时代码中被读取；
 - 装饰器、依赖注入、元数据反射需要运行时类引用；
-- 模块只为了副作用而导入，例如 `import "./setup";`。
+- 模块只为了副作用而导入。
 
 判断不清楚时，先用 LSP 查看引用和类型信息，再决定是否改成 `import type`。
 
@@ -215,7 +144,6 @@ package.json 是否有 scripts.typecheck？
         │   │
         │   ▼
         │  使用项目包管理器运行 typecheck
-        │  例如：pnpm typecheck / npm run typecheck / yarn typecheck
         │
         └─ 没有
             │
@@ -227,25 +155,7 @@ package.json 是否有 scripts.typecheck？
             └─ 不能：使用 tsc --noEmit
 ```
 
-在 pnpm 项目里，常见命令是：
-
-```bash
-pnpm typecheck
-```
-
-没有 `typecheck` 脚本时再尝试：
-
-```bash
-pnpm exec tsgo --noEmit
-```
-
-如果没有 `tsgo`，使用：
-
-```bash
-pnpm exec tsc --noEmit
-```
-
-其他包管理器按项目锁文件替换执行方式。
+具体命令模板见同目录 `template.md`。
 
 ## import type 错误的并行修复策略
 
@@ -288,20 +198,7 @@ pnpm exec tsc --noEmit
         └─ 只有非本范围错误：停止并汇报
 ```
 
-子代理任务应尽量具体，例如：
-
-```text
-修复这些文件中的 TypeScript verbatimModuleSyntax / import type 错误：
-- src/modules/user/user.service.ts
-- src/modules/user/user.controller.ts
-
-要求：
-1. 只处理这些文件。
-2. 只修复类型导入、类型导出和值导入误判问题。
-3. 不使用 any、unknown、as any、as unknown as ...。
-4. 不做业务逻辑重构。
-5. 判断不清楚时优先用 LSP 查看引用和定义。
-```
+子代理任务模板见同目录 `template.md`。
 
 分片建议：
 
@@ -323,23 +220,6 @@ pnpm exec tsc --noEmit
 - 类型检查通过，或剩余错误明确不属于本次 CJS 到 ESM 迁移范围。
 - 未混入测试框架、代码检查器、构建系统、发布字段等非本阶段改动。
 
-## 汇报模板
+## 模板文件
 
-完成后用简短说明汇报：
-
-```markdown
-已整理并执行 TypeScript 项目的 CJS 到 ESM 迁移。
-
-变更：
-- `package.json` 增加或更新 `"type": "module"`。
-- `tsconfig.json` 增加或更新 `"verbatimModuleSyntax": true`。
-- 修复类型导入和类型导出，按需使用 `import type` / `export type`。
-
-验证：
-- 已运行 `<实际类型检查命令>`。
-- 类型检查结果：<通过 / 仍有非本范围错误>。
-
-注意：
-- 未迁移测试框架、ESLint、构建工具或发布字段。
-- 如使用子代理并行修复，说明分片方式和剩余问题。
-```
+配置片段、类型导入示例、类型检查命令、子代理任务和汇报模板见同目录 `template.md`。

@@ -233,24 +233,6 @@ export default {
 - 项目已有构建或类型检查通过。
 - 未修改 ESLint、Jest、ESM 等非本阶段范围的配置。
 
-## 汇报模板
+## 模板文件
 
-完成后用简短说明汇报：
-
-```markdown
-已完成 Prettier 到 Oxfmt 的迁移。
-
-变更：
-- 删除 Prettier 配置，新增 `oxfmt.config.ts`。
-- `format` 脚本改为 `oxfmt ...`。
-- lint-staged 中的 Prettier 命令已同步改为 `oxfmt`，或确认不适用。
-- 移除直接依赖 `prettier`，新增 `oxfmt`。
-- 更新锁文件。
-
-验证：
-- `pnpm exec oxfmt --help` 通过。
-- `pnpm format` 连续运行稳定。
-- `pnpm build` 通过。
-
-注意：计划中的 `oxc format` 在当前 npm 生态中不可用，已改用官方命令行工具 `oxfmt`。
-```
+配置模板和汇报模板见同目录 `template.md`。
