@@ -1,0 +1,186 @@
+# NestJS 升级到 latest 参考
+
+## 适用场景
+
+当用户要求把 NestJS 后台项目升级到最新版本，或明确提到以下内容时，使用这份参考：
+
+- NestJS 升级、`nestjs latest`、`@nestjs/*` 升级；
+- `source-map-support`、`--enable-source-maps`、Node.js source map；
+- `package.json` 的 `start`、`typecheck` 脚本；
+- Vitest 项目中清理 `tsconfig-paths`；
+- 将一次 NestJS 升级经验沉淀成可复用流程。
+
+这份参考默认面向 TypeScript NestJS 服务端项目。默认只升级 NestJS 相关直接依赖和本文件列出的运行脚本、类型检查、测试路径插件清理，不顺手迁移 lint、format、ESM、Docker 或业务代码。
+
+## 迁移目标
+
+默认目标：
+
+1. 将项目中已有的 NestJS 直接依赖升级到 latest，依赖分区保持原样。
+2. 移除 `source-map-support` 及其注册代码，改用 Node.js 原生 source map 能力。
+3. 将 `package.json` 的 `scripts.start` 设置为 `node --enable-source-maps dist/src/main.js`。
+4. 确保 `package.json` 存在并使用精确的 `scripts.typecheck: "tsc --noEmit"`。
+5. 如果项目已经是 Vitest，移除 `tsconfig-paths` 直接依赖以及只服务于 Jest/ts-node 测试链路的残留引用。
+6. 更新锁文件，并运行项目已有验证命令。
+
+脚本、依赖命令和汇报模板见同目录 `template.md`。
+
+## 默认迁移边界
+
+默认要做：
+
+- 检查 `package.json`、锁文件、NestJS 配置、测试框架配置和启动入口。
+- 升级已经存在的 `@nestjs/*` 直接依赖，例如 `@nestjs/common`、`@nestjs/core`、`@nestjs/platform-*`、`@nestjs/config`、`@nestjs/swagger`、`@nestjs/testing`、`@nestjs/cli`、`@nestjs/schematics` 等。
+- 移除 `source-map-support`、`@types/source-map-support` 直接依赖，以及 `import "source-map-support/register"`、`require("source-map-support/register")`、`sourceMapSupport.install()` 等注册代码。
+- 修改 `scripts.start` 和 `scripts.typecheck` 到目标值。
+- Vitest 项目移除 `tsconfig-paths` 直接依赖。
+
+默认不要做：
+
+- 不新增项目原本没有的 NestJS 扩展包，除非最新 NestJS peer dependency 或用户需求明确要求。
+- 不把 Jest 到 Vitest、CJS 到 ESM、ESLint 到 Oxlint、Prettier 到 Oxfmt 混入本次迁移；这些属于其他 references。
+- 不为了通过类型检查使用 `any`、`unknown`、`as any` 或 `as unknown as ...`。
+- 不修改业务逻辑来掩盖框架升级问题；先判断是否是依赖、类型或配置问题。
+
+## 复杂判断方式
+
+涉及是否删除依赖、是否扩大范围、是否保留旧脚本时，先用 ASCII 图表达判断路径，再用简短描述说明结论。图用于确认分支，描述用于说明为什么这样处理。
+
+```text
+读取 package.json / 锁文件 / 测试配置 / 启动入口
+        │
+        ▼
+确认已有 @nestjs/* 直接依赖
+        │
+        ▼
+按 dependencies / devDependencies 原分区升级到 latest
+        │
+        ▼
+是否存在 source-map-support？
+        │
+        ├─ 是：删除依赖和注册代码，并设置 scripts.start
+        │
+        └─ 否：仍检查 scripts.start 是否已启用 Node source map
+        │
+        ▼
+检查 scripts.typecheck
+        │
+        ├─ 缺失：新增 "tsc --noEmit"
+        ├─ 一致：保留
+        └─ 不一致：改为 "tsc --noEmit"，并在汇报说明
+        │
+        ▼
+当前测试框架是否是 Vitest？
+        │
+        ├─ 是：移除 tsconfig-paths 直接依赖和 Jest/ts-node 测试残留引用
+        └─ 否：不把测试框架迁移混进本次 NestJS latest 升级
+        │
+        ▼
+安装 / 更新锁文件
+        │
+        ▼
+运行 typecheck、build 和必要测试
+        │
+        ▼
+汇报改动、验证结果和偏差
+```
+
+描述要求：如果分支判断很简单，一两句话即可。比如“当前项目已经使用 Vitest，`tsconfig-paths` 只属于 Jest/ts-node 旧链路，因此本次升级一并移除；未迁移测试框架本身。”不要只贴图不解释。
+
+## 推荐执行流程
+
+以 pnpm 项目为例，其他包管理器按锁文件替换命令。
+
+1. 检查当前工作区是否有未提交改动，避免覆盖用户已有修改。
+2. 读取 `package.json`：
+   - `dependencies` / `devDependencies` 中的 `@nestjs/*`、`source-map-support`、`@types/source-map-support`、`tsconfig-paths`；
+   - `scripts.start`、`scripts.typecheck`、`scripts.build`、`scripts.test`；
+   - 是否有 `jest` 字段或测试相关脚本。
+3. 判断包管理器：优先按 `pnpm-lock.yaml`、`package-lock.json`、`yarn.lock`、`bun.lockb`。
+4. 升级已有 NestJS 直接依赖到 latest，保持 dependencies / devDependencies 分区，不随意新增不在项目中的 NestJS 包。
+5. 移除 `source-map-support` 直接依赖和注册代码。
+6. 修改 `scripts.start` 为 `node --enable-source-maps dist/src/main.js`。
+7. 确保 `scripts.typecheck` 为 `tsc --noEmit`。如果已有但不一致，改到目标值并在汇报里说明原值。
+8. 判断当前项目是否是 Vitest：
+   - `package.json` 有 `vitest` 依赖或脚本；
+   - 存在 `vitest.config.*`；
+   - 测试代码从 `vitest` 导入 API。
+9. 如果是 Vitest，移除 `tsconfig-paths` 直接依赖，并清理只属于 Jest/ts-node 测试链路的引用。Vitest / Vite 的路径别名应使用项目已有的 `resolve.tsconfigPaths` 或 Vite 配置方式。
+10. 更新锁文件。
+11. 运行验证命令：优先 `typecheck`、`build`，再运行本次影响相关的测试。命令失败时，保留失败输出并判断是否属于本次迁移范围。
+
+## source-map-support 处理
+
+现代 Node.js 已支持 source map。NestJS latest 项目不再需要通过 `source-map-support` 注册栈追踪映射。
+
+处理规则：
+
+- 删除 `source-map-support` 和 `@types/source-map-support` 直接依赖。
+- 删除源码中的 `source-map-support/register` 注册和 `sourceMapSupport.install()`。
+- 将 `package.json` 的 `scripts.start` 设置为 `node --enable-source-maps dist/src/main.js`。
+- 如果项目的构建输出入口不是 `dist/src/main.js`，先核对实际 NestJS 构建配置；没有明确证据时按本迁移目标设置，并在汇报里说明。
+
+## typecheck 脚本处理
+
+`package.json` 应使用统一类型检查入口：
+
+```json
+{
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
+```
+
+处理规则：
+
+- 没有 `typecheck`：新增。
+- 已有且完全等于 `tsc --noEmit`：保留。
+- 已有但不一致：改为 `tsc --noEmit`，并在汇报中写明原命令和新命令。
+
+## Vitest 项目的 tsconfig-paths 清理
+
+在这个迁移约定中，`tsconfig-paths` 视为 Jest/ts-node 测试链路的 tsconfig 路径插件。项目已经迁移到 Vitest 时，应移除该直接依赖。
+
+判断流程：
+
+```text
+项目是否使用 Vitest？
+        │
+        ├─ 否：不处理 tsconfig-paths，避免扩大到测试框架迁移
+        │
+        └─ 是
+            │
+            ▼
+           package.json 是否直接依赖 tsconfig-paths？
+            │
+            ├─ 否：无需移除
+            │
+            └─ 是
+                │
+                ▼
+               是否只被 Jest/ts-node 测试配置引用？
+                │
+                ├─ 是：删除引用并移除依赖
+                └─ 否：移除直接依赖前先说明仍有非测试链路引用，需要同步处理
+```
+
+描述要求：如果发现 `tsconfig-paths/register` 仍被非测试命令直接使用，不要静默删除后留下坏脚本；应把这视为项目事实和默认迁移边界的冲突，先说明需要同步调整对应脚本或扩大范围。
+
+## 验收标准
+
+迁移完成后至少确认：
+
+- 已有 `@nestjs/*` 直接依赖已升级到 latest，依赖分区未被无故改变。
+- `package.json` 不再直接依赖 `source-map-support` 和 `@types/source-map-support`。
+- 源码不再注册 `source-map-support`。
+- `scripts.start` 为 `node --enable-source-maps dist/src/main.js`。
+- `scripts.typecheck` 为 `tsc --noEmit`。
+- 如果项目是 Vitest，`package.json` 不再直接依赖 `tsconfig-paths`，也没有 Jest/ts-node 测试链路残留引用。
+- 锁文件已随包管理器命令更新。
+- 已运行 `typecheck`、`build` 和必要测试，或明确说明跳过原因 / 失败原因。
+- 未混入 lint、format、ESM、Docker 或业务逻辑重构等非本阶段改动。
+
+## 模板文件
+
+命令模板、`package.json` 片段、搜索模式和汇报模板见同目录 `template.md`。

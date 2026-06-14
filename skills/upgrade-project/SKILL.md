@@ -1,6 +1,6 @@
 ---
 name: upgrade-project
-description: 当用户要求升级、现代化、迁移或替换项目工具链和框架时使用这个技能，尤其是把旧的 JavaScript/TypeScript 工具迁移到新工具，或把项目约定、Docker 构建与部署流程沉淀成可复用规范。适用范围包括格式化器、代码检查器、测试框架、构建工具、包管理器、运行时、模块系统、框架、配置迁移、Dockerfile / docker-build.sh 部署流程和 AGENTS.md / CLAUDE.md 项目提示词提取，例如 Prettier 到 Oxfmt、ESLint 到 Oxlint、Jest 到 Vitest、CommonJS/CJS 到 ESM、旧 Node 版本到新 Node 版本、Docker 多阶段构建和镜像发布。用户提到“升级项目”“迁移技术栈”“替换旧工具”“refactor format”“refactor-lint”“prettier”“oxfmt”“oxc format”“eslint”“oxlint”“oxlint.config.ts”“cjs-esm”“CommonJS 转 ESM”“type module”“verbatimModuleSyntax”“Dockerfile”“docker-build.sh”“deploy:docker”“docker build”“docker push”“镜像发布”“AGENTS.md”“CLAUDE.md”“项目提示词”“后台项目提示词”“通用 agent 提示词”，或者要求把一次升级经验沉淀成可复用流程时，应优先使用这个技能。
+description: 当用户要求升级、现代化、迁移或替换项目工具链和框架时使用这个技能，尤其是把旧的 JavaScript/TypeScript 工具迁移到新工具，或把项目约定、Docker 构建与部署流程沉淀成可复用规范。适用范围包括格式化器、代码检查器、测试框架、构建工具、包管理器、运行时、模块系统、框架、配置迁移、Dockerfile / docker-build.sh 部署流程和 AGENTS.md / CLAUDE.md 项目提示词提取，例如 Prettier 到 Oxfmt、ESLint 到 Oxlint、Jest 到 Vitest、CommonJS/CJS 到 ESM、NestJS 升级到 latest、旧 Node 版本到新 Node 版本、Docker 多阶段构建和镜像发布。用户提到“升级项目”“迁移技术栈”“替换旧工具”“refactor format”“refactor-lint”“prettier”“oxfmt”“oxc format”“eslint”“oxlint”“oxlint.config.ts”“cjs-esm”“CommonJS 转 ESM”“type module”“verbatimModuleSyntax”“nestjs latest”“NestJS 升级”“source-map-support”“--enable-source-maps”“typecheck”“tsconfig-paths”“Dockerfile”“docker-build.sh”“deploy:docker”“docker build”“docker push”“镜像发布”“AGENTS.md”“CLAUDE.md”“项目提示词”“后台项目提示词”“通用 agent 提示词”，或者要求把一次升级经验沉淀成可复用流程时，应优先使用这个技能。
 metadata:
   tags: 升级, 迁移, 重构, 工具链, javascript, typescript
 ---
@@ -76,6 +76,7 @@ metadata:
 - `references/global-agent/index.md`：通用后台项目提示词提取。任务提到 AGENTS.md、CLAUDE.md、项目提示词、后台项目提示词、通用 agent 提示词，或要求从项目约定中提取常用命令、测试要求、标准文档、反模式时，先读取这个文件；项目提示词模板见同目录 `template.md`。
 - `references/docker-build/index.md`：Docker 构建与部署流程。任务提到 Dockerfile、`x86-debian.Dockerfile`、`docker-build.sh`、`deploy:docker`、`docker build`、`docker push`、镜像发布、`images.tar`，或要求统一后台项目 Docker 构建和部署入口时，先读取这个文件；构建命令和汇报模板见同目录 `template.md`。
 - `references/cjs-esm/index.md`：TypeScript 项目的 CommonJS/CJS 到 ESM 迁移。任务提到 `"type": "module"`、`verbatimModuleSyntax`、`import type`、CJS 转 ESM、模块系统迁移，或迁移后需要修复类型导入错误时，先读取这个文件；配置、类型导入和汇报模板见同目录 `template.md`。
+- `references/nestjs-latest/index.md`：NestJS 项目升级到 latest。任务提到 NestJS 升级、`@nestjs/*`、`source-map-support`、`--enable-source-maps`、`typecheck`、`tsconfig-paths`，或要求把 NestJS 后台项目升级到最新版本时，先读取这个文件；脚本、依赖处理和汇报模板见同目录 `template.md`。
 
 ## 汇报要求
 
