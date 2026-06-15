@@ -32,6 +32,7 @@
 - Dockerfile、`docker-build.sh`、镜像发布：`references/docker-build/index.md`。
 - CommonJS/CJS 到 ESM：`references/cjs-esm/index.md`。
 - NestJS 升级到 latest：`references/nestjs-latest/index.md`。
+- SWC 配置：`references/swc/index.md`。
 
 ## 内容组织
 

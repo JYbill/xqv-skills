@@ -137,6 +137,83 @@ require("tsconfig-paths/register")
 当前项目已经使用 Vitest，`tsconfig-paths` 只在旧 Jest/ts-node 测试链路中出现，所以本次随 NestJS latest 升级移除该直接依赖。未做测试框架迁移，因为项目已经完成 Vitest 切换。
 ```
 
+## `x86-debian.Dockerfile` 模板
+
+当用户明确要求 NestJS latest 同步 Dockerfile 模板时，以当前项目的 `x86-debian.Dockerfile` 为模板内容：
+
+```dockerfile
+FROM --platform=linux/amd64 node:24.15.0-slim AS base
+WORKDIR /app
+RUN echo "deb http://mirrors.aliyun.com/debian/ bookworm main" > /etc/apt/sources.list && \
+   echo "deb http://mirrors.aliyun.com/debian/ bookworm-updates main" >> /etc/apt/sources.list && \
+   echo "deb http://mirrors.aliyun.com/debian-security/ bookworm-security main" >> /etc/apt/sources.list && \
+   rm -rf /etc/apt/sources.list.d/*
+RUN apt-get update && apt-get install -y openssl build-essential python3 && apt-get clean && apt-get autoclean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+RUN npm i -g pnpm && npm cache clean -f
+
+FROM base AS install
+COPY package.json .
+RUN npm pkg delete scripts.prepare
+COPY .npmrc .
+COPY patches patches
+COPY pnpm-lock.yaml .
+COPY pnpm-workspace.yaml .
+COPY vendor vendor
+RUN pnpm install --frozen-lockfile && pnpm store prune
+COPY prisma.config.ts .
+COPY env env
+COPY prisma prisma
+RUN pnpm prisma:generate
+COPY . .
+
+FROM install AS format
+RUN pnpm format
+
+FROM install AS lint
+RUN pnpm lint
+
+FROM install AS test
+RUN pnpm test
+
+FROM scratch AS coverage-report
+COPY --from=test /app/coverage/ /
+
+FROM install AS build
+RUN pnpm build
+
+FROM --platform=linux/amd64 node:24.15.0-slim AS production
+WORKDIR /app
+RUN echo "deb http://mirrors.aliyun.com/debian/ bookworm main" > /etc/apt/sources.list && \
+   echo "deb http://mirrors.aliyun.com/debian/ bookworm-updates main" >> /etc/apt/sources.list && \
+   echo "deb http://mirrors.aliyun.com/debian-security/ bookworm-security main" >> /etc/apt/sources.list && \
+   rm -rf /etc/apt/sources.list.d/*
+RUN apt-get update && apt-get install -y openssl build-essential python3 bash vim curl ffmpeg && apt-get clean && apt-get autoclean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+ENV NODE_ENV=production
+RUN npm install -g pm2 pnpm && npm cache clean -f
+RUN pm2 install pm2-logrotate && pm2 set pm2-logrotate:max_size 200M && pm2 set pm2-logrotate:retain 7
+COPY --from=build /app/package.json .
+RUN npm pkg delete scripts.prepare
+COPY --from=build /app/.npmrc .
+COPY --from=build /app/pnpm-lock.yaml .
+COPY --from=build /app/patches patches
+COPY --from=build /app/pnpm-workspace.yaml .
+COPY --from=build /app/vendor vendor
+RUN pnpm install --prod --frozen-lockfile && pnpm store prune
+COPY --from=build /app/pm2.config.js .
+COPY --from=build /app/dist dist
+
+EXPOSE 3000
+CMD ["pm2-runtime", "pm2.config.js"]
+```
+
+处理规则：
+
+- 模板文件名使用 `x86-debian.Dockerfile`。
+- `RUN npm pkg delete scripts.prepare` 保留，用于避免容器内安装依赖时触发本地 prepare 钩子。
+- `format`、`lint`、`test`、`coverage-report`、`build`、`production` 阶段按模板保留；删除某个阶段前先确认用户要求和项目事实。
+- 如果项目没有 `patches`、`vendor`、`prisma.config.ts`、`env`、`prisma` 或 `pm2.config.js`，迁移到其他项目时按真实目录调整，并在汇报中说明偏差。
+- Docker 构建入口、镜像 tag、registry 推送仍读取 `references/docker-build/index.md`。
+
 ## 验证命令模板
 
 优先运行：
@@ -166,6 +243,7 @@ pnpm exec vitest run --project test
 - `package.json` 的 `start` 已改为 `node --enable-source-maps dist/src/main.js`。
 - `package.json` 的 `typecheck` 已设置为 `tsc --noEmit`。
 - 当前项目使用 Vitest，已移除 `tsconfig-paths` 直接依赖及相关旧测试链路残留。
+- 如用户要求同步 Dockerfile，`x86-debian.Dockerfile` 已按模板更新；如未要求，说明未处理 Dockerfile。
 
 验证：
 - 已运行 `<实际类型检查命令>`：<结果>。
@@ -173,7 +251,7 @@ pnpm exec vitest run --project test
 - 已运行 `<实际测试命令或说明未运行>`：<结果>。
 
 注意：
-- 未迁移 lint、format、ESM、Docker 或业务逻辑。
+- 未迁移 lint、format、ESM 或业务逻辑；Dockerfile 只在用户明确要求时按 `x86-debian.Dockerfile` 模板同步。
 - 如有命令失败，说明失败原因和是否属于本次迁移范围。
 - 保留未处理的既有无关工作区改动。
 ```

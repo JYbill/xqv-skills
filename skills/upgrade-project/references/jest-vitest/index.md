@@ -129,7 +129,7 @@ test/debug/*.debug.ts        # 手动调试脚本，不纳入常规自动化测�
 
 1. 检查当前项目状态：
    - `package.json` 的 `scripts.test`、`test:e2e`，以及是否还有 `test:watch`、`test:cov` 等旧脚本。
-   - `package.json` 的 `lint-staged` 字段、`.lintstagedrc*`、`lint-staged.config.*`、husky hook、CI 文件中是否直接调用 Jest。
+   - `package.json` 的 `lint-staged` 字段、`.lintstagedrc*`、`lint-staged.config.*`；如果需要保留或迁移独立配置文件，目标文件名统一为 `lint-staged.config.js`；husky hook、CI 文件中是否直接调用 Jest。
    - `devDependencies` 中的 Jest 相关依赖。
    - `jest.config.*`、`test/jest-e2e.json`、`package.json` 的 `jest` 字段。
    - 如果 Jest 配置写在 `package.json` 中，先读取其中的 `testMatch` / `testRegex`、`testEnvironment`、`moduleNameMapper`、`setupFiles` / `setupFilesAfterEnv`、`collectCoverageFrom`、`coverageDirectory`、`coveragePathIgnorePatterns`、`testPathIgnorePatterns` 等语义，再迁移到 `vitest.config.ts`，不要只删除字段。

@@ -1,6 +1,6 @@
 ---
 name: upgrade-project
-description: 当用户要求升级、现代化、迁移或替换项目工具链和框架时使用这个技能，尤其是把旧的 JavaScript/TypeScript 工具迁移到新工具，或把项目约定、Docker 构建与部署流程沉淀成可复用规范。适用范围包括格式化器、代码检查器、测试框架、构建工具、包管理器、运行时、模块系统、框架、配置迁移、Dockerfile / docker-build.sh 部署流程和 AGENTS.md / CLAUDE.md 项目提示词提取，例如 Prettier 到 Oxfmt、ESLint 到 Oxlint、Jest 到 Vitest、CommonJS/CJS 到 ESM、NestJS 升级到 latest、旧 Node 版本到新 Node 版本、Docker 多阶段构建和镜像发布。用户提到“升级项目”“迁移技术栈”“替换旧工具”“refactor format”“refactor-lint”“prettier”“oxfmt”“oxc format”“eslint”“oxlint”“oxlint.config.ts”“cjs-esm”“CommonJS 转 ESM”“type module”“verbatimModuleSyntax”“nestjs latest”“NestJS 升级”“source-map-support”“--enable-source-maps”“typecheck”“tsconfig-paths”“Dockerfile”“docker-build.sh”“deploy:docker”“docker build”“docker push”“镜像发布”“AGENTS.md”“CLAUDE.md”“项目提示词”“后台项目提示词”“通用 agent 提示词”，或者要求把一次升级经验沉淀成可复用流程时，应优先使用这个技能。
+description: 当用户要求升级、现代化、迁移或替换项目工具链和框架时使用这个技能，尤其是把旧的 JavaScript/TypeScript 工具迁移到新工具，或把项目约定、Docker 构建与部署流程沉淀成可复用规范。适用范围包括格式化器、代码检查器、测试框架、构建工具、SWC 配置、lint-staged 配置、包管理器、运行时、模块系统、框架、配置迁移、Dockerfile / docker-build.sh 部署流程和 AGENTS.md / CLAUDE.md 项目提示词提取，例如 Prettier 到 Oxfmt、ESLint 到 Oxlint、Jest 到 Vitest、CommonJS/CJS 到 ESM、NestJS 升级到 latest、SWC 配置、旧 Node 版本到新 Node 版本、Docker 多阶段构建和镜像发布。用户提到“升级项目”“迁移技术栈”“替换旧工具”“refactor format”“refactor-lint”“prettier”“oxfmt”“oxc format”“eslint”“oxlint”“oxlint.config.ts”“cjs-esm”“CommonJS 转 ESM”“type module”“verbatimModuleSyntax”“nestjs latest”“NestJS 升级”“source-map-support”“--enable-source-maps”“typecheck”“tsconfig-paths”“swc”“SWC”“swcrc”“swcrcPath”“.swcrc”“@swc/core”“lint-staged.config.js”“Dockerfile”“docker-build.sh”“deploy:docker”“docker build”“docker push”“镜像发布”“AGENTS.md”“CLAUDE.md”“项目提示词”“后台项目提示词”“通用 agent 提示词”，或者要求把一次升级经验沉淀成可复用流程时，应优先使用这个技能。
 metadata:
   tags: 升级, 迁移, 重构, 工具链, javascript, typescript
 ---
@@ -62,7 +62,7 @@ metadata:
 4. **尽早验证命令。** 替换脚本前先运行目标工具的帮助或版本命令。请求中的命令如果不是依赖生态真实提供的命令，应停下说明，而不是临时编造绕法。
 5. **保持差异窄。** 只修改属于本次迁移的文件。不要把代码检查、测试框架、ESM、Docker、CI、IDE 或业务代码改动混进来，除非用户明确要求。
 6. **使用项目已有包管理器。** 根据 `pnpm-lock.yaml`、`package-lock.json`、`yarn.lock`、`bun.lockb` 判断使用哪个安装和移除命令。
-7. **同步 lint-staged 配置。** 迁移会影响格式化、代码检查、测试或其他提交前检查命令时，检查 `package.json` 的 `lint-staged` 字段、`.lintstagedrc*`、`lint-staged.config.*` 等配置；如果仍引用旧工具或旧命令，按同一迁移目标同步更新，只改本次迁移涉及的规则，不扩大匹配范围。
+7. **同步 lint-staged 配置。** 迁移会影响格式化、代码检查、测试或其他提交前检查命令时，检查 `package.json` 的 `lint-staged` 字段、`.lintstagedrc*`、`lint-staged.config.*` 等配置；如果需要新增或重命名独立配置文件，统一命名为 `lint-staged.config.js`，ESM 项目使用 `export default`；如果仍引用旧工具或旧命令，按同一迁移目标同步更新，只改本次迁移涉及的规则，不扩大匹配范围。
 8. **运行迁移命令。** 格式化器迁移只接受纯格式化差异。如果格式化改动很多文件，应和业务逻辑改动分开。
 9. **检查稳定性。** 对格式化器等幂等命令连续运行两次，确认第二次不会产生新的差异。
 10. **使用现有验证。** 优先运行项目已有的构建、类型检查或冒烟验证命令。已知会自动修改文件的命令，运行前先确认项目说明和用户意图。
@@ -76,7 +76,8 @@ metadata:
 - `references/global-agent/index.md`：通用后台项目提示词提取。任务提到 AGENTS.md、CLAUDE.md、项目提示词、后台项目提示词、通用 agent 提示词，或要求从项目约定中提取常用命令、测试要求、标准文档、反模式时，先读取这个文件；项目提示词模板见同目录 `template.md`。
 - `references/docker-build/index.md`：Docker 构建与部署流程。任务提到 Dockerfile、`x86-debian.Dockerfile`、`docker-build.sh`、`deploy:docker`、`docker build`、`docker push`、镜像发布、`images.tar`，或要求统一后台项目 Docker 构建和部署入口时，先读取这个文件；构建命令和汇报模板见同目录 `template.md`。
 - `references/cjs-esm/index.md`：TypeScript 项目的 CommonJS/CJS 到 ESM 迁移。任务提到 `"type": "module"`、`verbatimModuleSyntax`、`import type`、CJS 转 ESM、模块系统迁移，或迁移后需要修复类型导入错误时，先读取这个文件；配置、类型导入和汇报模板见同目录 `template.md`。
-- `references/nestjs-latest/index.md`：NestJS 项目升级到 latest。任务提到 NestJS 升级、`@nestjs/*`、`source-map-support`、`--enable-source-maps`、`typecheck`、`tsconfig-paths`，或要求把 NestJS 后台项目升级到最新版本时，先读取这个文件；脚本、依赖处理和汇报模板见同目录 `template.md`。
+- `references/nestjs-latest/index.md`：NestJS 项目升级到 latest。任务提到 NestJS 升级、`@nestjs/*`、`source-map-support`、`--enable-source-maps`、`typecheck`、`tsconfig-paths`，或要求把 NestJS 后台项目升级到最新版本时，先读取这个文件；脚本、依赖处理、Dockerfile 模板和汇报模板见同目录 `template.md`。
+- `references/swc/index.md`：SWC 配置整理。任务提到 SWC、`.swcrc`、`swcrcPath`、`@swc/core`、`@swc/cli`、`@swc/helpers`、NestJS SWC builder，或要求统一 SWC 配置文件命名和内容时，先读取这个文件；`.swcrc`、`nest-cli.json` 片段和汇报模板见同目录 `template.md`。
 
 ## 汇报要求
 

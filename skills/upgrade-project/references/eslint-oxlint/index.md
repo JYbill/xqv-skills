@@ -79,7 +79,7 @@
 
 1. 检查当前项目状态：
    - `package.json` 的 `scripts.lint`。
-   - `package.json` 的 `lint-staged` 字段、`.lintstagedrc*`、`lint-staged.config.*`。
+   - `package.json` 的 `lint-staged` 字段、`.lintstagedrc*`、`lint-staged.config.*`；如果需要保留或迁移独立配置文件，目标文件名统一为 `lint-staged.config.js`。
    - `devDependencies` 中的 ESLint 相关依赖。
    - `eslint.config.*`、`.eslintrc*`、`.eslintignore`。
    - 已跟踪的 ESLint 缓存文件，例如 `.cache/.eslintcache`。

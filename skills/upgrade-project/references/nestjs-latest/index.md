@@ -7,10 +7,11 @@
 - NestJS 升级、`nestjs latest`、`@nestjs/*` 升级；
 - `source-map-support`、`--enable-source-maps`、Node.js source map；
 - `package.json` 的 `start`、`typecheck` 脚本；
+- `x86-debian.Dockerfile`、NestJS latest 对应 Dockerfile 模板；
 - Vitest 项目中清理 `tsconfig-paths`；
 - 将一次 NestJS 升级经验沉淀成可复用流程。
 
-这份参考默认面向 TypeScript NestJS 服务端项目。默认只升级 NestJS 相关直接依赖和本文件列出的运行脚本、类型检查、测试路径插件清理，不顺手迁移 lint、format、ESM、Docker 或业务代码。
+这份参考默认面向 TypeScript NestJS 服务端项目。默认只升级 NestJS 相关直接依赖和本文件列出的运行脚本、类型检查、测试路径插件清理；Dockerfile 只在用户明确要求时按 `x86-debian.Dockerfile` 模板同步。不顺手迁移 lint、format、ESM 或业务代码。
 
 ## 迁移目标
 
@@ -22,6 +23,7 @@
 4. 确保 `package.json` 存在并使用精确的 `scripts.typecheck: "tsc --noEmit"`。
 5. 如果项目已经是 Vitest，移除 `tsconfig-paths` 直接依赖以及只服务于 Jest/ts-node 测试链路的残留引用。
 6. 更新锁文件，并运行项目已有验证命令。
+7. 如果用户明确要求同步 Dockerfile，以 `x86-debian.Dockerfile` 作为 NestJS 服务镜像模板。
 
 脚本、依赖命令和汇报模板见同目录 `template.md`。
 
@@ -34,11 +36,13 @@
 - 移除 `source-map-support`、`@types/source-map-support` 直接依赖，以及 `import "source-map-support/register"`、`require("source-map-support/register")`、`sourceMapSupport.install()` 等注册代码。
 - 修改 `scripts.start` 和 `scripts.typecheck` 到目标值。
 - Vitest 项目移除 `tsconfig-paths` 直接依赖。
+- 用户明确要求 Dockerfile 模板时，使用同目录 `template.md` 中的 `x86-debian.Dockerfile` 模板。
 
 默认不要做：
 
 - 不新增项目原本没有的 NestJS 扩展包，除非最新 NestJS peer dependency 或用户需求明确要求。
 - 不把 Jest 到 Vitest、CJS 到 ESM、ESLint 到 Oxlint、Prettier 到 Oxfmt 混入本次迁移；这些属于其他 references。
+- 不默认重写 Docker 构建或部署流程；只有用户明确要求 Dockerfile 模板时，才按 `x86-debian.Dockerfile` 模板同步。
 - 不为了通过类型检查使用 `any`、`unknown`、`as any` 或 `as unknown as ...`。
 - 不修改业务逻辑来掩盖框架升级问题；先判断是否是依赖、类型或配置问题。
 
@@ -107,7 +111,8 @@
    - 测试代码从 `vitest` 导入 API。
 9. 如果是 Vitest，移除 `tsconfig-paths` 直接依赖，并清理只属于 Jest/ts-node 测试链路的引用。Vitest / Vite 的路径别名应使用项目已有的 `resolve.tsconfigPaths` 或 Vite 配置方式。
 10. 更新锁文件。
-11. 运行验证命令：优先 `typecheck`、`build`，再运行本次影响相关的测试。命令失败时，保留失败输出并判断是否属于本次迁移范围。
+11. 如果用户明确要求同步 Dockerfile，按 `template.md` 的 `x86-debian.Dockerfile` 模板更新项目 Dockerfile；不要把 registry、推送脚本或部署流程混入本阶段。
+12. 运行验证命令：优先 `typecheck`、`build`，再运行本次影响相关的测试。命令失败时，保留失败输出并判断是否属于本次迁移范围。
 
 ## source-map-support 处理
 
@@ -167,6 +172,17 @@
 
 描述要求：如果发现 `tsconfig-paths/register` 仍被非测试命令直接使用，不要静默删除后留下坏脚本；应把这视为项目事实和默认迁移边界的冲突，先说明需要同步调整对应脚本或扩大范围。
 
+## Dockerfile 模板处理
+
+当用户明确要求 NestJS latest reference 同步 Dockerfile 模板时，使用同目录 `template.md` 的 `x86-debian.Dockerfile` 模板。这个模板来自当前项目的 `x86-debian.Dockerfile`，用于 Node.js 24 / pnpm / NestJS 服务端项目。
+
+处理规则：
+
+- 默认文件名是 `x86-debian.Dockerfile`。
+- 保留多阶段结构：`base` → `install` → `format` / `lint` / `test` / `coverage-report` / `build` → `production`。
+- 保留 `RUN npm pkg delete scripts.prepare`，避免容器安装依赖时触发本地 prepare 钩子。
+- 构建入口、镜像 tag、registry 推送和 `docker-build.sh` 细节仍属于 `references/docker-build/index.md`；不要把部署流程混进 NestJS latest 升级，除非用户同时要求。
+
 ## 验收标准
 
 迁移完成后至少确认：
@@ -178,9 +194,10 @@
 - `scripts.typecheck` 为 `tsc --noEmit`。
 - 如果项目是 Vitest，`package.json` 不再直接依赖 `tsconfig-paths`，也没有 Jest/ts-node 测试链路残留引用。
 - 锁文件已随包管理器命令更新。
+- 如果用户要求同步 Dockerfile，`x86-debian.Dockerfile` 已按模板更新，或明确说明没有同步的原因。
 - 已运行 `typecheck`、`build` 和必要测试，或明确说明跳过原因 / 失败原因。
 - 未混入 lint、format、ESM、Docker 或业务逻辑重构等非本阶段改动。
 
 ## 模板文件
 
-命令模板、`package.json` 片段、搜索模式和汇报模板见同目录 `template.md`。
+命令模板、`package.json` 片段、搜索模式、`x86-debian.Dockerfile` 模板和汇报模板见同目录 `template.md`。

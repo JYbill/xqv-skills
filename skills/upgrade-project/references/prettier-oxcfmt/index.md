@@ -107,7 +107,7 @@
 
 1. 检查当前脚本和配置：
    - `package.json` 的 `scripts.format`。
-   - `package.json` 的 `lint-staged` 字段、`.lintstagedrc*`、`lint-staged.config.*`。
+   - `package.json` 的 `lint-staged` 字段、`.lintstagedrc*`、`lint-staged.config.*`；如果需要保留或迁移独立配置文件，目标文件名统一为 `lint-staged.config.js`。
    - `devDependencies.prettier`。
    - `.prettierrc` / `prettier.config.*` / `.prettierignore`。
    - 锁文件类型。
