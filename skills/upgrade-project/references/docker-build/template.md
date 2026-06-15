@@ -40,11 +40,86 @@ bash ./docker-build.sh -p x86-debian -s
 install
   ├─ format → lint
   └─ test
+       └─ coverage-report
 production
-  └─ 自动依赖 build
 ```
 
-`format`、`lint`、`test` 任一失败时，不继续构建 `production`。构建 `--target production` 时，Docker 会因为 `COPY --from=build` 自动构建 `build` 阶段，不需要单独执行 `--target build`。
+`format`、`lint`、`test` 任一失败时，不继续构建 `production`。`coverage-report` 用于从 `test` 阶段导出 `/app/coverage/`，不参与最终生产镜像。
+
+## `x86-debian.Dockerfile` 模板
+
+```Dockerfile
+# 依赖基础层：提供安装原生依赖和运行校验 target 所需的工具链。
+FROM --platform=linux/amd64 node:24.15.0-slim AS base
+WORKDIR /app
+RUN echo "deb http://mirrors.aliyun.com/debian/ bookworm main" > /etc/apt/sources.list && \
+  echo "deb http://mirrors.aliyun.com/debian/ bookworm-updates main" >> /etc/apt/sources.list && \
+  echo "deb http://mirrors.aliyun.com/debian-security/ bookworm-security main" >> /etc/apt/sources.list && \
+  rm -rf /etc/apt/sources.list.d/*
+RUN apt-get update && apt-get install -y --no-install-recommends openssl build-essential python3 && \
+  apt-get clean && apt-get autoclean && apt-get autoremove -y && \
+  rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+RUN npm install -g pnpm && npm cache clean -f
+
+# 安装层：先复制依赖清单以复用 Docker 缓存，再复制完整源码。
+FROM base AS install
+COPY package.json .
+COPY pnpm-workspace.yaml .
+COPY pnpm-lock.yaml .
+COPY patches patches
+COPY vendor ./vendor
+COPY .npmrc .
+RUN npm pkg delete scripts.prepare
+RUN pnpm --version
+RUN pnpm config list
+RUN pnpm install --frozen-lockfile
+COPY . .
+
+# 格式化校验层：由 docker-build.sh 在 production 前置阶段触发。
+FROM install AS format
+RUN pnpm format
+
+# 代码检查层：依赖 format 层，保持 Docker 构建顺序清楚。
+FROM format AS lint
+RUN pnpm lint
+
+# 测试层：只运行普通测试 project；e2e 依赖专门测试环境，不纳入镜像发布前置构建。
+FROM install AS test
+RUN pnpm test
+
+# 覆盖率报告层：用于从 test 阶段导出 coverage 产物。
+FROM scratch AS coverage-report
+COPY --from=test /app/coverage/ /
+
+# 生产层：项目生产态通过 PM2 直接运行 TypeScript 入口。
+FROM --platform=linux/amd64 node:24.15.0-slim AS production
+WORKDIR /app
+RUN echo "deb http://mirrors.aliyun.com/debian/ bookworm main" > /etc/apt/sources.list && \
+  echo "deb http://mirrors.aliyun.com/debian/ bookworm-updates main" >> /etc/apt/sources.list && \
+  echo "deb http://mirrors.aliyun.com/debian-security/ bookworm-security main" >> /etc/apt/sources.list && \
+  rm -rf /etc/apt/sources.list.d/*
+RUN apt-get update && apt-get install -y --no-install-recommends bash vim ffmpeg curl procps openssl && \
+  apt-get clean && apt-get autoclean && apt-get autoremove -y && \
+  rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+ENV NODE_ENV=production
+RUN npm install -g pm2 pnpm && npm cache clean -f
+RUN pm2 install pm2-logrotate && pm2 set pm2-logrotate:max_size 200M && pm2 set pm2-logrotate:retain 7
+COPY package.json .
+COPY pnpm-workspace.yaml .
+COPY pnpm-lock.yaml .
+COPY patches patches
+COPY vendor ./vendor
+COPY .npmrc .
+RUN npm pkg delete scripts.prepare
+RUN pnpm install --prod --frozen-lockfile && pnpm store prune
+COPY . .
+# 对 vim 编辑会读取该环境变量，从而使用 utf-8 而非兜底的 latin1 字符集。
+ENV LANG=C.utf8
+ENV LC_ALL=C.utf8
+
+EXPOSE 3000
+CMD ["pm2-runtime", "pm2.config.cjs"]
+```
 
 ## 汇报模板
 
@@ -54,7 +129,8 @@ production
 变更：
 - 明确 `x86-debian.Dockerfile` 是默认 Dockerfile。
 - 明确 `docker-build.sh -p x86-debian` 是统一构建与部署入口。
-- 记录 Docker 多阶段构建顺序：install → (format → lint) 与 test 并行 → production 自动依赖 build。
+- 记录 Docker 多阶段构建顺序：install → (format → lint) 与 test 并行 → production。
+- 记录 `coverage-report` 从 test 阶段导出 coverage 产物。
 - 记录默认推送 registry 和 `-s` 导出 `images.tar` 的区别。
 
 验证：
