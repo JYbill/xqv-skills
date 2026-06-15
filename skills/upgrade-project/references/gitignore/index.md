@@ -34,7 +34,7 @@
 检查当前包管理器、目录结构和已有 .gitignore
         │
         ▼
-读取 references/gitignore/template.md
+读取 references/gitignore/gitignore.md
         │
         ▼
 按项目事实裁剪模板项、保留必要 .gitkeep 例外
@@ -59,4 +59,4 @@
 
 ## 模板文件
 
-`.gitignore` 模板和汇报模板见同目录 `template.md`。
+`.gitignore` 模板见同目录 `gitignore.md`，汇报模板见 `report.md`。

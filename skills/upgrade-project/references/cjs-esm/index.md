@@ -24,7 +24,7 @@
 4. 迁移后运行一次类型检查。
 5. 如果类型检查暴露大量 `import type` 相关错误，按文件或目录分片，安排尽可能多的子代理并行修复。
 
-配置片段、类型导入示例、子代理任务和汇报模板见同目录 `template.md`。
+`package.json` 片段见同目录 `package.md`，`tsconfig.json` 片段见 `tsconfig.md`，类型导入示例见 `imports.md`，类型导出示例见 `exports.md`，类型检查命令见 `typecheck.md`，子代理任务模板见 `subagent.md`，汇报模板见 `report.md`。
 
 ## 默认迁移边界
 
@@ -96,13 +96,13 @@
 
 ### package.json
 
-如果没有 `type` 字段，新增 `"type": "module"`。如果已有 `"type": "commonjs"`，改成 `"type": "module"`。具体片段见同目录 `template.md`。
+如果没有 `type` 字段，新增 `"type": "module"`。如果已有 `"type": "commonjs"`，改成 `"type": "module"`。具体片段见同目录 `package.md`。
 
 不要因为本步骤顺手改脚本、依赖或发布字段。除非用户明确要求，本迁移只关心模块类型声明。
 
 ### tsconfig.json
 
-在 `compilerOptions` 中设置 `verbatimModuleSyntax: true`。具体片段见同目录 `template.md`。
+在 `compilerOptions` 中设置 `verbatimModuleSyntax: true`。具体片段见同目录 `tsconfig.md`。
 
 如果项目使用 `extends` 继承多个 TypeScript 配置，先确认当前项目实际执行类型检查时使用哪一个配置文件。优先修改项目自己的主 `tsconfig.json`；如果仓库约定使用 `tsconfig.build.json` 或类似文件做类型检查，则按实际命令涉及的配置处理，并在汇报里说明。
 
@@ -112,15 +112,15 @@
 
 ### 只作为类型使用
 
-只作为类型使用的普通导入、默认导入、命名空间导入都应改成类型导入。具体写法见同目录 `template.md`。
+只作为类型使用的普通导入、默认导入、命名空间导入都应改成类型导入。具体写法见同目录 `imports.md`。
 
 ### 同一个模块同时导入类型和值
 
-可以使用内联 `type`，避免拆成两条导入。如果周围代码已经习惯拆分导入，也可以拆成两条，优先保持项目既有风格。具体写法见同目录 `template.md`。
+可以使用内联 `type`，避免拆成两条导入。如果周围代码已经习惯拆分导入，也可以拆成两条，优先保持项目既有风格。具体写法见同目录 `imports.md`。
 
 ### 类型导出
 
-只导出类型时使用 `export type`；同时导出类型和值时使用内联 `type`。具体写法见同目录 `template.md`。
+只导出类型时使用 `export type`；同时导出类型和值时使用内联 `type`。具体写法见同目录 `exports.md`。
 
 ### 不要误改运行时值
 
@@ -155,7 +155,7 @@ package.json 是否有 scripts.typecheck？
             └─ 不能：使用 tsc --noEmit
 ```
 
-具体命令模板见同目录 `template.md`。
+具体命令模板见同目录 `typecheck.md`。
 
 ## import type 错误的并行修复策略
 
@@ -198,7 +198,7 @@ package.json 是否有 scripts.typecheck？
         └─ 只有非本范围错误：停止并汇报
 ```
 
-子代理任务模板见同目录 `template.md`。
+子代理任务模板见同目录 `subagent.md`。
 
 分片建议：
 
@@ -222,4 +222,4 @@ package.json 是否有 scripts.typecheck？
 
 ## 模板文件
 
-配置片段、类型导入示例、类型检查命令、子代理任务和汇报模板见同目录 `template.md`。
+`package.json` 片段见同目录 `package.md`，`tsconfig.json` 片段见 `tsconfig.md`，类型导入示例见 `imports.md`，类型导出示例见 `exports.md`，类型检查命令见 `typecheck.md`，子代理任务模板见 `subagent.md`，汇报模板见 `report.md`。

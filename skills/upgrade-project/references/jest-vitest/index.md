@@ -85,7 +85,7 @@ test/debug/*.debug.ts        # 手动调试脚本，不纳入常规自动化测�
 - 顶层 `test.include` 设置为 `[]`，避免 root suite 和 project suite 重复收集测试文件。
 - 覆盖率排除测试文件本身，例如 `src/**/*.spec.ts`、`src/**/*.integration-spec.ts`。
 
-具体配置、脚本和汇报模板见同目录 `template.md`。
+配置模板见同目录 `vitest-config.md`，脚本模板见 `package.md`，验证命令见 `commands.md`，测试 API 迁移模板见 `vitest-api.md`，汇报模板见 `report.md`。
 
 ## 推荐执行流程
 
@@ -137,10 +137,10 @@ test/debug/*.debug.ts        # 手动调试脚本，不纳入常规自动化测�
    - 当前工作区是否已有未提交改动。
 2. 安装 Vitest 相关依赖。NestJS / TypeScript 项目常见组合是 `vitest`、`vite`、`@vitest/coverage-v8`、`unplugin-swc`。如果项目不使用 SWC 或已有其他 Vite 转换方案，按项目事实调整，不要盲目新增无用依赖。
 3. 运行 `pnpm exec vitest --help` 验证 CLI 能力，并确认目标 Vitest/Vite 版本支持模板中的 `projects`、`extends`、`fileParallelism`、`resolve.tsconfigPaths` 等字段；不支持时按当前版本的真实配置能力调整，不要照抄模板。
-4. 新增或更新 `vitest.config.ts`。推荐配置见同目录 `template.md`。
-5. 修改 `package.json` 脚本。推荐脚本见同目录 `template.md`。
+4. 新增或更新 `vitest.config.ts`。推荐配置见同目录 `vitest-config.md`。
+5. 修改 `package.json` 脚本。推荐脚本见同目录 `package.md`。
 6. 更新项目提示词或文档中的常用命令。编辑代码后优先运行本次修改相关的少量文件；需要验证单元测试和集成测试整组时运行 `pnpm test` 或 `pnpm test:cov`，需要 e2e 时单独运行 `--project e2e` 或项目已有独立入口。
-7. 迁移测试代码 API。常见 API 替换见同目录 `template.md`。
+7. 迁移测试代码 API。常见 API 替换见同目录 `vitest-api.md`。
 8. NestJS e2e 测试通常只需要替换测试框架 API，`@nestjs/testing` 和 `supertest` 不是 Jest 专用依赖，不要误删。保留应用关闭逻辑。
 9. 删除 Jest 配置和直接依赖，只删除项目直接依赖且确实属于 Jest 链路的包。不要删除 `@nestjs/testing`、`supertest`、`@types/supertest`。
 10. 搜索 Jest 残留，例如 `jest`、`Jest`、`ts-jest`、`@types/jest`、`jest-e2e`、`.jest`、`jest.`。如果残留是 `package.json` 的 `jest` 字段，按 Jest 配置处理：迁移必要语义后删除该字段。锁文件里的传递依赖名不一定要消失；非本次迁移的历史文档是否更新，按用户要求和项目约定判断。
@@ -223,4 +223,4 @@ Vitest 的 `vi.mock` 也有提升行为，但和 Jest 不是逐字节兼容。�
 
 ## 模板文件
 
-配置模板、脚本模板、测试 API 迁移模板和汇报模板见同目录 `template.md`。
+配置模板见同目录 `vitest-config.md`，脚本模板见 `package.md`，验证命令见 `commands.md`，测试 API 迁移模板见 `vitest-api.md`，汇报模板见 `report.md`。

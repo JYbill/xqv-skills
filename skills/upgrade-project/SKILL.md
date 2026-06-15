@@ -72,15 +72,15 @@ metadata:
 
 ## 引用目录
 
-- `references/prettier-oxcfmt/index.md`：Prettier 到 Oxfmt 的格式化器迁移。任务提到 Prettier、Oxfmt、`oxfmt`、`oxc format`、`.prettierrc`、`prettier --write`，或要求替换项目格式化命令时，先读取这个文件；配置和汇报模板见同目录 `template.md`。
-- `references/eslint-oxlint/index.md`：ESLint 到 Oxlint 的代码检查器迁移。任务提到 ESLint、Oxlint、`oxlint.config.ts`、`refactor-lint`、`eslint.config.*`、`typescript-eslint`，或要求替换项目 lint 命令时，先读取这个文件；配置和汇报模板见同目录 `template.md`。
-- `references/jest-vitest/index.md`：Jest 到 Vitest 的测试框架迁移。任务提到 Jest、Vitest、`vitest.config.*`、`jest.config.*`、`ts-jest`、`@types/jest`、`*.spec.ts`、`*.integration-spec.ts`、`*.e2e-spec.ts`、测试分层，或要求替换项目测试命令时，先读取这个文件；配置、脚本和汇报模板见同目录 `template.md`。
-- `references/global-agent/index.md`：通用后台项目提示词提取。任务提到 AGENTS.md、CLAUDE.md、项目提示词、后台项目提示词、通用 agent 提示词，或要求从项目约定中提取常用命令、测试要求、标准文档、反模式时，先读取这个文件；默认正文落地到 `AGENTS.md`，`CLAUDE.md` 只写 `@AGENTS.md`，模板见同目录 `template.md`。
-- `references/docker-build/index.md`：Docker 构建与部署流程。任务提到 Dockerfile、`.dockerignore`、`x86-debian.Dockerfile`、`docker-build.sh`、`deploy:docker`、`docker build`、`docker push`、镜像发布、`images.tar`，或要求统一后台项目 Docker 构建和部署入口时，先读取这个文件；构建命令、`.dockerignore` 和汇报模板见同目录 `template.md`。
-- `references/gitignore/index.md`：Git 忽略规则模板。任务提到 `.gitignore`、gitignore、忽略文件、提交忽略规则，或要求统一后台项目本地配置、缓存、日志、环境文件、上传目录和 AI/agent 工作目录的忽略规则时，先读取这个文件；`.gitignore` 模板和汇报模板见同目录 `template.md`。
-- `references/cjs-esm/index.md`：TypeScript 项目的 CommonJS/CJS 到 ESM 迁移。任务提到 `"type": "module"`、`verbatimModuleSyntax`、`import type`、CJS 转 ESM、模块系统迁移，或迁移后需要修复类型导入错误时，先读取这个文件；配置、类型导入和汇报模板见同目录 `template.md`。
-- `references/nestjs-latest/index.md`：NestJS 项目升级到 latest。任务提到 NestJS 升级、`@nestjs/*`、`source-map-support`、`--enable-source-maps`、`typecheck`、`tsconfig-paths`，或要求把 NestJS 后台项目升级到最新版本时，先读取这个文件；脚本、依赖处理、Dockerfile 模板和汇报模板见同目录 `template.md`。
-- `references/swc/index.md`：SWC 配置整理。任务提到 SWC、`.swcrc`、`swcrcPath`、`@swc/core`、`@swc/cli`、`@swc/helpers`、NestJS SWC builder，或要求统一 SWC 配置文件命名和内容时，先读取这个文件；`.swcrc`、`nest-cli.json` 片段和汇报模板见同目录 `template.md`。
+- `references/prettier-oxcfmt/index.md`：Prettier 到 Oxfmt 的格式化器迁移。任务提到 Prettier、Oxfmt、`oxfmt`、`oxc format`、`.prettierrc`、`prettier --write`，或要求替换项目格式化命令时，先读取这个文件；配置模板见同目录 `oxfmt-config.md`，汇报模板见 `report.md`。
+- `references/eslint-oxlint/index.md`：ESLint 到 Oxlint 的代码检查器迁移。任务提到 ESLint、Oxlint、`oxlint.config.ts`、`refactor-lint`、`eslint.config.*`、`typescript-eslint`，或要求替换项目 lint 命令时，先读取这个文件；配置模板见同目录 `oxlint-config.md`，汇报模板见 `report.md`。
+- `references/jest-vitest/index.md`：Jest 到 Vitest 的测试框架迁移。任务提到 Jest、Vitest、`vitest.config.*`、`jest.config.*`、`ts-jest`、`@types/jest`、`*.spec.ts`、`*.integration-spec.ts`、`*.e2e-spec.ts`、测试分层，或要求替换项目测试命令时，先读取这个文件；配置模板见 `vitest-config.md`，脚本模板见 `package.md`，测试 API 迁移模板见 `vitest-api.md`，验证命令见 `commands.md`，汇报模板见 `report.md`。
+- `references/global-agent/index.md`：通用后台项目提示词提取。任务提到 AGENTS.md、CLAUDE.md、项目提示词、后台项目提示词、通用 agent 提示词，或要求从项目约定中提取常用命令、测试要求、标准文档、反模式时，先读取这个文件；默认正文落地到 `AGENTS.md`，模板见 `agents.md`；`CLAUDE.md` 只写 `@AGENTS.md`，模板见 `claude.md`；汇报模板见 `report.md`。
+- `references/docker-build/index.md`：Docker 构建与部署流程。任务提到 Dockerfile、`.dockerignore`、`x86-debian.Dockerfile`、`docker-build.sh`、`deploy:docker`、`docker build`、`docker push`、镜像发布、`images.tar`，或要求统一后台项目 Docker 构建和部署入口时，先读取这个文件；构建命令见 `commands.md`，`package.json` 脚本见 `package.md`，`.dockerignore` 见 `dockerignore.md`，Dockerfile 见 `dockerfile.md`，汇报模板见 `report.md`。
+- `references/gitignore/index.md`：Git 忽略规则模板。任务提到 `.gitignore`、gitignore、忽略文件、提交忽略规则，或要求统一后台项目本地配置、缓存、日志、环境文件、上传目录和 AI/agent 工作目录的忽略规则时，先读取这个文件；`.gitignore` 模板见 `gitignore.md`，汇报模板见 `report.md`。
+- `references/cjs-esm/index.md`：TypeScript 项目的 CommonJS/CJS 到 ESM 迁移。任务提到 `"type": "module"`、`verbatimModuleSyntax`、`import type`、CJS 转 ESM、模块系统迁移，或迁移后需要修复类型导入错误时，先读取这个文件；`package.json` 片段见 `package.md`，`tsconfig.json` 片段见 `tsconfig.md`，类型导入/导出示例见 `imports.md` / `exports.md`，类型检查命令见 `typecheck.md`，汇报模板见 `report.md`。
+- `references/nestjs-latest/index.md`：NestJS 项目升级到 latest。任务提到 NestJS 升级、`@nestjs/*`、`source-map-support`、`--enable-source-maps`、`typecheck`、`tsconfig-paths`，或要求把 NestJS 后台项目升级到最新版本时，先读取这个文件；脚本模板见 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，依赖命令见 `dependencies.md`，Dockerfile 模板见 `dockerfile.md`，汇报模板见 `report.md`。
+- `references/swc/index.md`：SWC 配置整理。任务提到 SWC、`.swcrc`、`swcrcPath`、`@swc/core`、`@swc/cli`、`@swc/helpers`、NestJS SWC builder，或要求统一 SWC 配置文件命名和内容时，先读取这个文件；`.swcrc` 模板见 `swcrc.md`，`nest-cli.json` 片段见 `nest-cli.md`，依赖命令见 `dependencies.md`，汇报模板见 `report.md`。
 
 ## 汇报要求
 

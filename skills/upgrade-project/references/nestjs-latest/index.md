@@ -25,7 +25,7 @@
 6. 更新锁文件，并运行项目已有验证命令。
 7. 如果用户明确要求同步 Dockerfile，以 `x86-debian.Dockerfile` 作为 NestJS 服务镜像模板。
 
-脚本、依赖命令、`tsconfig.json` 模板和汇报模板见同目录 `template.md`。
+脚本模板见同目录 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，依赖命令见 `dependencies.md`，清理示例见 `source-map-support.md` / `tsconfig-paths.md`，Dockerfile 模板见 `dockerfile.md`，验证命令见 `commands.md`，汇报模板见 `report.md`。
 
 ## 默认迁移边界
 
@@ -36,7 +36,7 @@
 - 移除 `source-map-support`、`@types/source-map-support` 直接依赖，以及 `import "source-map-support/register"`、`require("source-map-support/register")`、`sourceMapSupport.install()` 等注册代码。
 - 修改 `scripts.start` 和 `scripts.typecheck` 到目标值。
 - Vitest 项目移除 `tsconfig-paths` 直接依赖。
-- 用户明确要求 Dockerfile 模板时，使用同目录 `template.md` 中的 `x86-debian.Dockerfile` 模板。
+- 用户明确要求 Dockerfile 模板时，使用同目录 `dockerfile.md` 中的 `x86-debian.Dockerfile` 模板。
 
 默认不要做：
 
@@ -111,7 +111,7 @@
    - 测试代码从 `vitest` 导入 API。
 9. 如果是 Vitest，移除 `tsconfig-paths` 直接依赖，并清理只属于 Jest/ts-node 测试链路的引用。Vitest / Vite 的路径别名应使用项目已有的 `resolve.tsconfigPaths` 或 Vite 配置方式。
 10. 更新锁文件。
-11. 如果用户明确要求同步 Dockerfile，按 `template.md` 的 `x86-debian.Dockerfile` 模板更新项目 Dockerfile；不要把 registry、推送脚本或部署流程混入本阶段。
+11. 如果用户明确要求同步 Dockerfile，按 `dockerfile.md` 的 `x86-debian.Dockerfile` 模板更新项目 Dockerfile；不要把 registry、推送脚本或部署流程混入本阶段。
 12. 运行验证命令：优先 `typecheck`、`build`，再运行本次影响相关的测试。命令失败时，保留失败输出并判断是否属于本次迁移范围。
 
 ## source-map-support 处理
@@ -174,12 +174,12 @@
 
 ## Dockerfile 模板处理
 
-当用户明确要求 NestJS latest reference 同步 Dockerfile 模板时，使用同目录 `template.md` 的 `x86-debian.Dockerfile` 模板。这个模板来自当前项目的 `x86-debian.Dockerfile`，用于 Node.js 24 / pnpm / NestJS 服务端项目。
+当用户明确要求 NestJS latest reference 同步 Dockerfile 模板时，使用同目录 `dockerfile.md` 的 `x86-debian.Dockerfile` 模板。这个模板来自当前项目的 `x86-debian.Dockerfile`，用于 Node.js 24 / pnpm / NestJS 服务端项目。
 
 处理规则：
 
 - 默认文件名是 `x86-debian.Dockerfile`。
-- 保留多阶段结构：`base` → `install` → `format` / `lint` / `test` / `test-cov` / `coverage-report` / `build` → `production`。
+- 保留多阶段结构：`base` → `install` → `format` / `lint` / `test` / `build` → `production`；当前项目没有独立 `test:cov` 脚本，因此模板不保留 `test-cov` / `coverage-report` target。
 - 保留 `RUN npm pkg delete scripts.prepare`，避免容器安装依赖时触发本地 prepare 钩子。
 - 构建入口、镜像 tag、registry 推送和 `docker-build.sh` 细节仍属于 `references/docker-build/index.md`；不要把部署流程混进 NestJS latest 升级，除非用户同时要求。
 
@@ -200,4 +200,4 @@
 
 ## 模板文件
 
-命令模板、`package.json` 片段、`tsconfig.json` 模板、搜索模式、`x86-debian.Dockerfile` 模板和汇报模板见同目录 `template.md`。
+`package.json` 脚本模板见同目录 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，依赖命令见 `dependencies.md`，source-map-support 清理示例见 `source-map-support.md`，tsconfig-paths 搜索模式见 `tsconfig-paths.md`，复杂判断表达模板见 `flow.md`，`x86-debian.Dockerfile` 模板见 `dockerfile.md`，验证命令见 `commands.md`，汇报模板见 `report.md`。

@@ -75,7 +75,7 @@ NestJS 项目同步 `nest-cli.json` 的 `swcrcPath: ".swcrc"`
    - 读取 `tsconfig.json` / `tsconfig.build.json` 的 `module`、`target`、`experimentalDecorators`、`emitDecoratorMetadata` 等语义。
    - 当前工作区是否已有未提交改动。
 2. 将 SWC 配置文件统一为项目根目录 `.swcrc`。当前 `rag-server` 项目落地到 `/Users/xiaoqinvar/workspace/project/rag-server/.swcrc`。
-3. 使用同目录 `template.md` 中的 NestJS `.swcrc` 模板。它包含 TypeScript parser、装饰器元数据、NodeNext 模块、source map、排除声明文件等设置。
+3. 使用同目录 `swcrc.md` 中的 NestJS `.swcrc` 模板。它包含 TypeScript parser、装饰器元数据、NodeNext 模块、source map、排除声明文件等设置。
 4. NestJS 项目更新 `nest-cli.json`，保留原有 `deleteOutDir`、`assets`、`watchAssets`、`typeCheck` 等配置，只补齐或修正 SWC builder：
    ```json
    {
@@ -122,4 +122,4 @@ NestJS 依赖装饰器和元数据完成依赖注入，因此 `.swcrc` 必须保
 
 ## 模板文件
 
-`.swcrc`、`nest-cli.json` 片段、依赖命令和汇报模板见同目录 `template.md`。
+`.swcrc` 模板见同目录 `swcrc.md`，`nest-cli.json` 片段见 `nest-cli.md`，依赖命令见 `dependencies.md`，验证命令见 `commands.md`，汇报模板见 `report.md`。

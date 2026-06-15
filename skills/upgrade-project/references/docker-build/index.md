@@ -14,11 +14,11 @@
 
 默认模板以 `x86-debian.Dockerfile` 作为 Dockerfile；如果当前项目已有其他平台文件或命名约定，以项目事实为准，不要因为文件名不是 `Dockerfile` 就另建重复配置。
 
-`docker-build.sh` 是统一的 Docker 构建与部署入口。具体命令模板见同目录 `template.md`。如果项目保留 `package.json` 脚本，`deploy:docker` 应指向同一个入口。
+`docker-build.sh` 是统一的 Docker 构建与部署入口。具体命令模板见同目录 `commands.md`。如果项目保留 `package.json` 脚本，`deploy:docker` 应指向同目录 `package.md` 中的同一个入口。
 
 镜像名、registry、Node 版本、PM2、Prisma、是否需要 `env` 目录都属于项目事实。模板中的 `backend-rag`、`x86-debian`、`node:24.15.0-slim`、PM2 和 Prisma 只作为当前后台项目模板，迁移到其他项目时按真实服务名、运行方式和依赖结构调整，并在汇报中说明偏差。
 
-`.dockerignore` 使用同目录 `template.md` 的模板，覆盖不同后台项目常见的本地配置、缓存、文档、测试、agent/AI 工作目录和环境目录。模板默认排除 `env` / `src/env`，不要把环境目录复制进镜像；如果 Dockerfile 明确需要这些目录，先确认不包含敏感信息，再移除对应忽略项并说明原因。
+`.dockerignore` 使用同目录 `dockerignore.md` 的模板，覆盖不同后台项目常见的本地配置、缓存、文档、测试、agent/AI 工作目录和环境目录。模板默认排除 `env` / `src/env`，不要把环境目录复制进镜像；如果 Dockerfile 明确需要这些目录，先确认不包含敏感信息，再移除对应忽略项并说明原因。
 
 ## docker-build.sh 行为
 
@@ -29,7 +29,7 @@
 
 默认行为：
 
-1. 根据 Git 信息生成镜像 tag，tag 格式见同目录 `template.md`。
+1. 根据 Git 信息生成镜像 tag，tag 格式见同目录 `tag.md`。
 2. 服务镜像名按项目事实设置；当前模板示例为 `backend-rag`。
 3. 先构建 `install` target。
 4. 并行执行两组校验：
@@ -138,4 +138,4 @@
 
 ## 模板文件
 
-构建命令模板、`package.json` 脚本模板、`.dockerignore` 模板、镜像 tag 模板、多阶段顺序模板和汇报模板见同目录 `template.md`。
+构建命令模板见同目录 `commands.md`，`package.json` 脚本模板见 `package.md`，`.dockerignore` 模板见 `dockerignore.md`，镜像 tag 模板见 `tag.md`，多阶段顺序模板见 `stages.md`，Dockerfile 模板见 `dockerfile.md`，汇报模板见 `report.md`。

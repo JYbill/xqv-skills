@@ -55,7 +55,7 @@
 | `trailingComma: "all"` | `trailingComma: "all"` | 多行结构尽可能保留尾逗号。 |
 | `printWidth: 120` | `printWidth: 120` | 最大行宽。应显式迁移，避免和工具默认值不一致。 |
 
-参考模板见同目录的 `template.md`。不要在 skill/reference 目录中保存真实的 `oxfmt.config.*` 文件，避免被 Oxfmt 的嵌套配置搜索误加载。
+配置模板见同目录的 `oxfmt-config.md`，汇报模板见 `report.md`。不要在 skill/reference 目录中保存真实的 `oxfmt.config.*` 文件，避免被 Oxfmt 的嵌套配置搜索误加载。
 
 ## 推荐执行流程
 
@@ -235,4 +235,4 @@ export default {
 
 ## 模板文件
 
-配置模板和汇报模板见同目录 `template.md`。
+配置模板见同目录 `oxfmt-config.md`，汇报模板见 `report.md`。

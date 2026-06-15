@@ -38,7 +38,7 @@
 
 ## 内容组织
 
-`AGENTS.md` 正文模板、`CLAUDE.md` 引用写法和汇报模板放在同目录 `template.md`。`index.md` 只保留抽取原则、目录边界、落地检查和适用说明。
+`AGENTS.md` 正文模板见同目录 `agents.md`，`CLAUDE.md` 引用写法见 `claude.md`，汇报模板见 `report.md`。`index.md` 只保留抽取原则、目录边界、落地检查和适用说明。
 
 ## 落地检查清单
 
@@ -55,4 +55,4 @@
 
 ## 模板文件
 
-`AGENTS.md` 正文模板、`CLAUDE.md` 引用写法和汇报模板见同目录 `template.md`。
+`AGENTS.md` 正文模板见同目录 `agents.md`，`CLAUDE.md` 引用写法见 `claude.md`，汇报模板见 `report.md`。
