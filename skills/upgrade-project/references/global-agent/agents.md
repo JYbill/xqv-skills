@@ -66,11 +66,17 @@
 │   ├── enum/             # 枚举定义，如项目没有则删除本行
 │   ├── library/          # 基础设施封装
 │   ├── modules/          # 业务模块
+│   ├── types/            # 全局通用类型
 │   └── util/             # 工具函数
 ├── test/                 # e2e 测试或手动调试脚本
-├── types/                # 全局与模块共享类型
 └── package.json          # 脚本、依赖与包管理器声明
 ```
+
+# 类型声明
+
+- 全局通用类型放在 `src/types/` 下。
+- 源码相关的 `type` / `interface` 放到源码同层的 `源码名.d.ts` 文件中，例如 `auth.service.ts` 对应 `auth.service.d.ts`。
+- 不使用 `*.types.d.ts` 这类额外命名；类型文件名要直接跟随对应源码文件名。
 
 # 反模式
 
