@@ -10,60 +10,131 @@
 - 用户提到 Docker 构建、镜像发布、部署脚本、`deploy:docker`、`.dockerignore`、`docker build`、`docker push`、`images.tar`。
 - 用户要求把 Dockerfile 或部署流程沉淀成项目标准。
 
-## 核心约定
+## 第一原则：只改本次任务要求的 Docker 构建阶段
+
+`docker-build.sh` 通常同时包含三类逻辑：
+
+1. 参数解析、Git 信息、镜像名和 tag 生成；
+2. Docker 构建与校验阶段；
+3. push / save / registry 登录 / 发布输出。
+
+如果本次任务只是按 build-docker 模板整理 `fmt` / `lint` / `test` / `build` 阶段，只允许修改第 2 类逻辑。不要因为“顺手整理脚本”去碰第 1 类和第 3 类逻辑。
+
+### 绝对禁止的误改
+
+除非用户在本轮明确要求，否则不要修改 `docker-build.sh` 中这些内容：
+
+- `push_to_aliyun` 默认值和 `getopts` 参数解析；
+- 错误文案、拼写、缩进、shell 风格、反引号写法；
+- `branch_name`、`version_id`、`tag_id`、`clean_branch_name`、`docker_tag` 生成逻辑；
+- `service_name` 的值；
+- `image_id` 的取值方式；
+- `docker login`、`docker tag`、`docker push` 代码；
+- registry 地址、账号、密码来源、环境变量校验；
+- `docker save` 的文件名和输出文案，例如不要把项目原有的 `image.tar` 改成 `images.tar`；
+- 脚本权限，例如不要因为编辑脚本就 `chmod +x`；
+- `set -euo pipefail`、统一加引号、shellcheck 风格改写等脚本风格化改造。
+
+如果 diff 里出现 `if [ "$push_to_aliyun" = "true" ]` 以下 push / save 区域的改动，默认就是错误，必须先撤回。
+
+## build-docker 阶段执行契约
+
+模板要求的阶段关系是串行和并行混合，不是简单串行执行四个 target。
+
+```text
+install
+  ├─ format -> lint
+  └─ test
+production
+```
+
+含义：
+
+1. 先构建 `install` target，验证依赖安装和复用构建缓存。
+2. 然后并行执行两组校验：
+   - 第一组内部串行：先构建 `format` target，再构建 `lint` target；
+   - 第二组独立构建 `test` target。
+3. `format` / `lint` / `test` 任一失败，都必须停止，不能继续构建 `production`。
+4. 三个前置校验都通过后，才构建 `production` target。
+5. 后续 image id、tag、push、save 逻辑保持项目原样。
+
+### `docker-build.sh` 最小替换模板
+
+当项目原来只有一行正式构建：
+
+```bash
+docker build --progress=plain -f "${platform}.Dockerfile" -t ${service_name} .
+```
+
+只把这一行替换为下面的阶段块。块前后的代码不要动。
+
+```bash
+docker build --progress=plain -f "${platform}.Dockerfile" --target install -t ${service_name}:install . || exit 1
+(
+  docker build --progress=plain -f "${platform}.Dockerfile" --target format -t ${service_name}:format . || exit 1
+  docker build --progress=plain -f "${platform}.Dockerfile" --target lint -t ${service_name}:lint . || exit 1
+) &
+check_pid=$!
+docker build --progress=plain -f "${platform}.Dockerfile" --target test -t ${service_name}:test . &
+test_pid=$!
+check_status=0
+test_status=0
+wait "$check_pid" || check_status=$?
+wait "$test_pid" || test_status=$?
+if [ "$check_status" -ne 0 ] || [ "$test_status" -ne 0 ]; then
+  echo "docker check fail!"
+  exit 1
+fi
+docker build --progress=plain -f "${platform}.Dockerfile" --target production -t ${service_name} . || exit 1
+```
+
+注意：
+
+- 不要把 `format`、`lint`、`test` 改成全串行。
+- 不要让 `lint` 和 `format` 并行；`lint` 必须在 `format` 后执行。
+- 不要把 `production` 和任何校验 target 并行。
+- 不要为了“更好看”引入数组、函数、`set -euo pipefail` 或重写 push 区域。
+- 如果项目原来的构建命令参数不同，只在这一个构建块里沿用原参数；不要扩大到其他区域。
+
+## Dockerfile 阶段约定
 
 默认模板以 `x86-debian.Dockerfile` 作为 Dockerfile；如果当前项目已有其他平台文件或命名约定，以项目事实为准，不要因为文件名不是 `Dockerfile` 就另建重复配置。
-
-`docker-build.sh` 是统一的 Docker 构建与部署入口。具体命令模板见同目录 `commands.md`。如果项目保留 `package.json` 脚本，`deploy:docker` 应指向同目录 `package.md` 中的同一个入口。
-
-镜像名、registry、Node 版本、PM2、Prisma、是否需要 `env` 目录都属于项目事实。模板中的 `backend-rag`、`x86-debian`、`node:26-slim`、PM2 和 Prisma 只作为当前后台项目模板，迁移到其他项目时按真实服务名、运行方式和依赖结构调整，并在汇报中说明偏差。
-
-`.dockerignore` 使用同目录 `dockerignore.md` 的模板，覆盖不同后台项目常见的本地配置、缓存、文档、测试、agent/AI 工作目录和环境目录。模板默认排除 `env` / `src/env`，不要把环境目录复制进镜像；如果 Dockerfile 明确需要这些目录，先确认不包含敏感信息，再移除对应忽略项并说明原因。
-
-## docker-build.sh 行为
-
-脚本参数：
-
-- `-p <platform>`：选择平台，默认 `x86-debian`，并使用 `${platform}.Dockerfile`。
-- `-s`：不推送镜像，改为 `docker save` 到 `images.tar`。
-
-默认行为：
-
-1. 根据 Git 信息生成镜像 tag，tag 格式见同目录 `tag.md`。
-2. 服务镜像名按项目事实设置；当前模板示例为 `backend-rag`。
-3. 先构建 `install` target。
-4. 并行执行两组校验：
-   - 第一组：先构建 `format` target，再构建 `lint` target；
-   - 第二组：构建 `test` target。
-5. 只要 format / lint / test 任一失败，脚本直接失败，不继续构建 production 镜像。
-6. 构建 `production` target，并给本地镜像打服务名标签；如果 Dockerfile 的 `production` 阶段使用 `COPY --from=build`，会自动触发 `build` 阶段。
-7. 默认推送到脚本中定义的 registry；使用 `-s` 时导出 `images.tar`。
-
-注意：`git describe --tags --abbrev=0` 依赖仓库已有 tag。没有任何 Git tag 时，脚本会在生成镜像 tag 阶段失败；不要把这种失败误判为 Docker 构建失败。
-
-## x86-debian.Dockerfile 阶段
 
 `x86-debian.Dockerfile` 是多阶段构建文件，默认平台为 `linux/amd64`。
 
 ### `base`
 
-- 基于 `node:26-slim`。
-- 使用 Debian bookworm 阿里云镜像源。
-- 安装 `openssl`、`build-essential`、`python3`。
+- 基于项目真实运行需求选择基础镜像。模板中的 `node:26-slim` 只是示例；如果项目依赖 Puppeteer、Chromium、PM2 或特定系统库，必须按项目事实保留。
+- 可以配置 Debian 镜像源。
+- 可以安装项目构建和运行所需系统包。
 - 全局安装 `pnpm`。
 
 ### `install`
 
 - 复制 `package.json`、`.npmrc`、`pnpm-lock.yaml`、`pnpm-workspace.yaml` 等依赖清单。
 - 执行 `pnpm install --frozen-lockfile`。
-- 如项目使用 Prisma，可按项目事实复制 `prisma.config.ts`、`prisma` 等生成所需文件并执行 `pnpm prisma:generate`；不要为了让生成通过而编造 `ARG DATABASE_URL=mysql://prisma:prisma@localhost:3306/prisma`，也不要添加模板没有要求的 `ENV PRISMA_SKIP_POSTINSTALL_GENERATE=true`；默认不要复制 `env`，除非已确认 `.dockerignore` 中允许且不含敏感信息。
 - 最后复制完整源码。
+- 如项目使用 Prisma，可按项目事实复制 `prisma.config.ts`、`prisma` 等生成所需文件并执行 `pnpm prisma:generate`；不要为了让生成通过而编造 `ARG DATABASE_URL=mysql://prisma:prisma@localhost:3306/prisma`，也不要添加模板没有要求的 `ENV PRISMA_SKIP_POSTINSTALL_GENERATE=true`。
+- 默认不要复制 `env`，除非已确认 `.dockerignore` 中允许且不含敏感信息。
 
 这个顺序用于复用依赖安装缓存。调整 Dockerfile 时不要随意把 `COPY . .` 提前到依赖安装前，否则会降低缓存命中率。
 
 ### `format` / `lint` / `test`
 
-这些阶段分别运行项目统一脚本：`pnpm format`、`pnpm lint`、`pnpm test:cov`。当前模板把覆盖率测试放在 `test` target 中，供 `docker-build.sh` 的测试前置阶段和 `coverage-report` 复用。
+这些阶段分别运行项目统一脚本：
+
+```dockerfile
+FROM install AS format
+RUN pnpm format
+
+FROM install AS lint
+RUN pnpm lint
+
+FROM install AS test
+RUN pnpm test:cov
+```
+
+当前模板把覆盖率测试放在 `test` target 中，供 `docker-build.sh` 的测试前置阶段和 `coverage-report` 复用。
 
 因此本地 `package.json` 中的 `format`、`lint`、`test:cov` 脚本就是 Docker 构建校验的一部分。迁移格式化器、代码检查器或测试框架时，要同步确认这些脚本仍适合容器内构建。
 
@@ -71,57 +142,79 @@
 
 如项目需要在 Docker 构建中导出覆盖率，由 `coverage-report` 从 `test` 阶段的 `/app/coverage/` 复制报告。不要再新增单独的 `test-cov` 阶段。
 
+```dockerfile
+FROM scratch AS coverage-report
+COPY --from=test /app/coverage/ /
+```
+
 ### `build`
 
-运行 `pnpm build`，该阶段产出 `dist`，供 production 阶段复制。
+只有项目真实存在构建产物时才新增 `build` target，例如 `pnpm build` 产出 `dist`。如果项目直接运行 TypeScript 源码、没有 `build` 脚本，不要为了套模板虚构 `build` target。
+
+```dockerfile
+FROM install AS build
+RUN pnpm build
+```
 
 ### `production`
 
-- 基于 `node:26-slim`。
-- 安装 `openssl`、`build-essential`、`python3`、`bash`、`vim`、`curl`、`ffmpeg`。
-- 设置 `NODE_ENV=production`、`LANG=C.utf8`、`LC_ALL=C.utf8`，这几个 `ENV` 放在一起。
-- 全局安装 `pm2` 和 `pnpm`。
-- 安装并配置 `pm2-logrotate`。
 - 只安装生产依赖：`pnpm install --prod --frozen-lockfile`。
-- 复制 `pm2.config.cjs` 和 `dist`，或按项目事实复制实际启动配置和构建产物。
-- `pm2.config.cjs` 中启动编译产物的应用必须包含 `node_args: "--enable-source-maps"`，保证线上日志映射到源码行号。
-- 暴露 `3000`。
+- 复制项目真实运行所需文件，例如 `pm2.config.cjs`、`dist`、`src`、`views`。
+- 如果 PM2 启动编译产物，`pm2.config.cjs` 中应包含 `node_args: "--enable-source-maps"`，保证线上日志映射到源码行号。
+- 暴露项目真实端口。
 - 使用 `pm2-runtime pm2.config.cjs` 或项目实际启动命令启动。
 
-## 修改原则
+## `.dockerignore` 约定
 
-1. **统一入口。** 部署和正式镜像构建走 `docker-build.sh`，不要在文档或脚本中分散维护多套 `docker build` 命令。
-2. **平台映射清楚。** `-p x86-debian` 对应 `x86-debian.Dockerfile`。新增平台时，新增 `<platform>.Dockerfile`，并确保脚本无需额外分支即可找到。
-3. **先验证再发布。** `format`、`lint`、`test` 是 production 镜像前置校验；`production` 会自动依赖 `build` 阶段产出 `dist`，不要为了加快发布绕过这些 target。
-4. **保持缓存友好。** 依赖清单先复制、安装依赖后再复制源码，避免每次源码改动都重新安装依赖。
-5. **不要复制 registry 密码到文档。** `docker-build.sh` 里已有 registry 登录逻辑。迁移或泛化这套流程时，优先改为环境变量或 CI secret，不要把账号密码复制进 skill、AGENTS.md 或公开文档。
-6. **本地导出用 `-s`。** 需要离线交付镜像时使用 `-s` 生成 `images.tar`，不要手写另一套 save 命令。
-7. **构建失败按阶段定位。** install / format / lint / test / production（含其依赖的 build）任一阶段失败时，先看失败阶段日志，不要直接改 production 阶段掩盖前置问题。
-8. **限定脚本改动范围。** 按模板重写 `docker-build.sh` 时，只改用户要求范围内的构建阶段和校验流程；不要顺手改参数解析、默认平台、调用方式、镜像名、tag 规则、push / save 逻辑、registry 地址、登录方式或 `package.json` 调用脚本。除非用户明确要求迁移这些内容，模板中的 push、tag、registry 和参数约定只能作为参考，必须保留项目现有行为。
+`.dockerignore` 使用同目录 `dockerignore.md` 的模板，覆盖不同后台项目常见的本地配置、缓存、文档、测试、agent/AI 工作目录和环境目录。
 
-## 推荐执行流程
+注意：
+
+- 模板默认排除 `env` / `src/env`，不要把环境目录复制进镜像。
+- 如果 Dockerfile 明确需要这些目录，先确认不包含敏感信息，再移除对应忽略项并说明原因。
+- `.dockerignore` 和 `.gitignore` 是两类文件，不要混成一份规则。
+
+## `package.json` 脚本约定
+
+如果项目保留 `package.json` 脚本，`deploy:docker` 应指向统一入口：
+
+```json
+{
+  "deploy:docker": "bash ./docker-build.sh -p x86-debian"
+}
+```
+
+不要在文档、CI 或脚本中分散维护多套正式 `docker build` 命令。
+
+## 修改流程
 
 ```text
-确认目标：发布 registry 还是本地导出 images.tar
+确认本次任务是否只处理 Docker 构建阶段
         │
         ▼
-确认平台：默认 x86-debian，对应 x86-debian.Dockerfile
+检查 docker-build.sh、*.Dockerfile、.dockerignore、package.json 脚本
         │
         ▼
-检查 docker-build.sh、.dockerignore、package.json 的 deploy:docker、format/lint/test/build 脚本
+先定位 docker-build.sh 中唯一正式 docker build 行
         │
         ▼
-确认 Git 分支、commit 和 tag 可用于生成镜像 tag
+只替换这一行所在的构建阶段块
         │
         ▼
-执行 docker-build.sh
-        │
-        ├─ 默认：推送 registry
-        │
-        └─ -s：导出 images.tar
+确认 Dockerfile 存在 install / format / lint / test / production target
         │
         ▼
-按阶段汇报构建、校验、发布或导出结果
+运行 bash -n docker-build.sh
+        │
+        ▼
+检查 git diff -- docker-build.sh
+        │
+        ├─ 只改构建阶段块：继续
+        │
+        └─ 改到 push/save/tag/参数解析：撤回无关改动
+        │
+        ▼
+按项目条件运行 Docker 构建；Docker daemon 不可用时如实说明
 ```
 
 ## 验收标准
@@ -130,14 +223,16 @@
 
 - `x86-debian.Dockerfile` 仍是默认 Dockerfile，没有新增重复的 `Dockerfile`。
 - `docker-build.sh -p x86-debian` 能找到 `x86-debian.Dockerfile`。
+- `docker-build.sh` 的阶段顺序符合 `install -> (format -> lint) & test -> production`。
+- `docker-build.sh` 没有改动 push / save / registry 登录 / tag 生成 / 参数解析等非构建阶段代码。
 - `deploy:docker` 如存在，指向统一的 `docker-build.sh` 入口。
 - `.dockerignore` 已按模板排除常见本地配置、缓存、文档、测试、agent/AI 工作目录、环境目录和构建无关文件。
 - `install` target 使用 `pnpm install --frozen-lockfile`。
-- `format`、`lint`、`test`、`build` target 仍调用项目统一脚本；当前模板的 `test` target 运行 `pnpm test:cov`，`coverage-report` 从 `test` 阶段复制覆盖率产物，不再使用单独的 `test-cov` target。
+- `format`、`lint`、`test` target 仍调用项目统一脚本；当前模板的 `test` target 运行 `pnpm test:cov`，`coverage-report` 从 `test` 阶段复制覆盖率产物，不再使用单独的 `test-cov` target。
 - `production` target 只安装生产依赖，并通过项目实际启动命令启动。
-- PM2 启动编译产物时包含 `node_args: "--enable-source-maps"`。
-- 默认发布流程和 `-s` 本地导出流程语义清楚。
 - 没有在新增文档中复制 registry 账号密码。
+- `bash -n docker-build.sh` 已通过。
+- 如果 Docker daemon 不可用，明确说明未运行完整 Docker build 的原因。
 
 ## 模板文件
 
