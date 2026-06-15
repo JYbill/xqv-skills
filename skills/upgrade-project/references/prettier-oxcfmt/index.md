@@ -130,11 +130,11 @@
 7. 修改 `package.json` 里已有的 `format` 脚本。
    ```json
    {
-     "format": "oxfmt --disable-nested-config \"src/**/*.ts\" \"test/**/*.ts\""
+     "format": "oxfmt \"src/**/*.ts\" \"test/**/*.ts\""
    }
    ```
-   保持原格式化范围，不要擅自扩大到全仓库。`--disable-nested-config` 表示只使用根配置，避免仓库里的示例目录、文档目录或 fixture 目录中的 `oxfmt.config.*` 被误加载。
-8. 如果项目存在 lint-staged 配置，并且其中调用了 `prettier` 或 `prettier --write`，同步改为 Oxfmt。不要把 `format` 脚本里的全量 glob 复制到 lint-staged 命令里；lint-staged 会把暂存文件路径追加给命令。通常只保留必要命令和参数，例如 `oxfmt --disable-nested-config`，并保持原文件匹配规则和提交前检查范围不变。
+   保持原格式化范围，不要擅自扩大到全仓库，也不要默认添加改变配置查找行为的参数；如确有嵌套配置冲突，先说明项目事实并征得用户同意。
+8. 如果项目存在 lint-staged 配置，并且其中调用了 `prettier` 或 `prettier --write`，同步改为 Oxfmt。不要把 `format` 脚本里的全量 glob 复制到 lint-staged 命令里；lint-staged 会把暂存文件路径追加给命令。通常只保留 `oxfmt`，不要在 lint-staged 命令中添加额外参数，并保持原文件匹配规则和提交前检查范围不变。
 9. 删除 Prettier 配置文件。
 10. 运行格式化：
     ```bash

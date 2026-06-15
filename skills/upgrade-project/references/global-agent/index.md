@@ -4,8 +4,9 @@
 
 当用户希望把某个后台项目的 `AGENTS.md`、`CLAUDE.md` 或团队约定提取成可复用项目提示词时，使用这份参考。
 
-这份参考适合从具体项目中抽取通用后台约定，尤其是：
+这份参考只处理项目提示词本身，适合从具体项目中抽取通用后台约定，尤其是：
 
+- 运行环境和工具链；
 - 常用命令；
 - 测试分层；
 - 标准文档维护规则；
@@ -19,21 +20,22 @@
 4. **测试规则按语义分层。** 不要只按文件名描述测试；要说明单元测试、集成测试、e2e 测试分别允许依赖什么、禁止什么。
 5. **文档规则只保留维护入口。** 如果已经约定用 `docs/spec/index.md` 维护标准文档索引，不要再在项目提示词里重复列出每篇文档清单。
 6. **反模式写成可执行约束。** 说明“应该放在哪里”和“不要怎么做”，让后续修改代码时可以直接应用。
+7. **不要混入迁移参考。** 项目提示词可以记录当前项目正在使用的工具和命令，但不要放入工具迁移步骤、框架升级步骤、Docker 构建细节或测试框架配置片段。
+
+## 与其他 references 的边界
+
+`global-agent` 只负责生成或整理 `AGENTS.md` / `CLAUDE.md` 这类项目提示词。遇到下面内容时，读取对应 reference，不要把具体迁移内容写进本目录：
+
+- Prettier 到 Oxfmt：`references/prettier-oxcfmt/index.md`。
+- ESLint 到 Oxlint：`references/eslint-oxlint/index.md`。
+- Jest 到 Vitest、Vitest projects、测试框架配置：`references/jest-vitest/index.md`。
+- Dockerfile、`docker-build.sh`、镜像发布：`references/docker-build/index.md`。
+- CommonJS/CJS 到 ESM：`references/cjs-esm/index.md`。
+- NestJS 升级到 latest：`references/nestjs-latest/index.md`。
 
 ## 内容组织
 
-项目提示词正文模板放在同目录 `template.md`。`index.md` 只保留抽取原则、落地检查和适用说明。
-
-## 配套 Vitest project 建议
-
-如果项目使用 Vitest，推荐按测试语义拆 project：
-
-- `test` project：`src/**/*.spec.ts`、`src/**/*.integration-spec.ts`。
-- `e2e` project：`test/**/*.e2e-spec.ts`，并设置 `fileParallelism: false`。
-- 顶层 `test.include` 设置为 `[]`，避免 root suite 重复收集测试文件。
-- coverage 排除 `src/**/*.spec.ts` 和 `src/**/*.integration-spec.ts`。
-
-具体配置片段和命令模板见同目录 `template.md`。
+项目提示词正文模板和汇报模板放在同目录 `template.md`。`index.md` 只保留抽取原则、目录边界、落地检查和适用说明。
 
 ## 落地检查清单
 
@@ -44,8 +46,8 @@
 - 测试章节包含 `*.spec.ts`、`*.integration-spec.ts`、`*.e2e-spec.ts` 三层语义。
 - 标准文档章节只要求维护 `docs/spec/index.md`，不重复维护文档表格。
 - 反模式章节能指导后续代码落位，且没有把业务专属规则误写成通用规则。
-- 如同步 Vitest 配置，普通测试和 e2e 已按 project 区分。
+- 没有混入其他迁移 reference 的配置片段、执行流程、验收标准或汇报模板。
 
 ## 模板文件
 
-项目提示词模板、Vitest project 模板和汇报模板见同目录 `template.md`。
+项目提示词模板和汇报模板见同目录 `template.md`。
