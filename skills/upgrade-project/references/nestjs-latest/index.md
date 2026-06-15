@@ -25,7 +25,7 @@
 6. 更新锁文件，并运行项目已有验证命令。
 7. 如果用户明确要求同步 Dockerfile，以 `x86-debian.Dockerfile` 作为 NestJS 服务镜像模板。
 
-脚本、依赖命令和汇报模板见同目录 `template.md`。
+脚本、依赖命令、`tsconfig.json` 模板和汇报模板见同目录 `template.md`。
 
 ## 默认迁移边界
 
@@ -200,4 +200,4 @@
 
 ## 模板文件
 
-命令模板、`package.json` 片段、搜索模式、`x86-debian.Dockerfile` 模板和汇报模板见同目录 `template.md`。
+命令模板、`package.json` 片段、`tsconfig.json` 模板、搜索模式、`x86-debian.Dockerfile` 模板和汇报模板见同目录 `template.md`。

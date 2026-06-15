@@ -19,6 +19,48 @@
 - `typecheck` 必须精确使用 `tsc --noEmit`。
 - 如果原脚本不同，在汇报里说明原值和新值。
 
+## `tsconfig.json` 模板
+
+当用户明确要求 NestJS latest 同步 `tsconfig.json` 模板时，以当前项目的 `tsconfig.json` 为基础模板；迁移到其他项目时，应按真实目录和别名调整 `paths`，不要保留只属于当前项目的生成目录别名。
+
+```json
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": ".cache/.tsbuildinfo",
+    "module": "NodeNext",
+    "declaration": true,
+    "removeComments": false,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ESNext",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "noEmit": true,
+    "types": ["node"],
+    "incremental": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "strictNullChecks": true,
+    "verbatimModuleSyntax": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@test/*": ["./test/*"]
+    },
+    "isolatedModules": true,
+    "esModuleInterop": true
+  },
+  "include": ["src/**/*", "test/**/*", "prisma.config.ts"]
+}
+```
+
+处理规则：
+
+- 只在用户明确要求同步 `tsconfig.json` 时使用该模板；默认 NestJS latest 升级不重写 TypeScript 配置。
+- `paths` 只保留通用别名；项目特有的生成目录、包名或模块别名应按目标项目事实增删。
+- 如果目标项目没有 `prisma.config.ts`、`test` 目录或 `@test/*` 别名，迁移时同步删改对应 `include` / `paths`。
+
 ## 依赖升级命令模板
 
 以 pnpm 为例。先从 `package.json` 读取项目已有的 NestJS 直接依赖，再按原分区升级，不要盲目复制下面的完整列表。
