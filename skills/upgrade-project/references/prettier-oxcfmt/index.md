@@ -134,7 +134,13 @@
    }
    ```
    保持原格式化范围，不要擅自扩大到全仓库，也不要默认添加改变配置查找行为的参数；如确有嵌套配置冲突，先说明项目事实并征得用户同意。
-8. 如果项目存在 lint-staged 配置，并且其中调用了 `prettier` 或 `prettier --write`，同步改为 Oxfmt。不要把 `format` 脚本里的全量 glob 复制到 lint-staged 命令里；lint-staged 会把暂存文件路径追加给命令。通常只保留 `oxfmt`，不要在 lint-staged 命令中添加额外参数，并保持原文件匹配规则和提交前检查范围不变。
+8. 如果项目存在 lint-staged 配置，并且其中调用了 `prettier` 或 `prettier --write`，同步改为 Oxfmt。不要把 `format` 脚本里的全量 glob 复制到 lint-staged 命令里；lint-staged 会把暂存文件路径追加给命令。通常只保留 `oxfmt`，不要在 lint-staged 命令中添加额外参数，并保持原文件匹配规则和提交前检查范围不变。如果项目同时使用 Oxfmt 和 Oxlint，`lint-staged.config.js` 默认模板为：
+   ```js
+   export default {
+     "*.ts": ["oxfmt --write", "oxlint --config oxlint.config.ts --fix --no-error-on-unmatched-pattern"],
+   };
+   ```
+   其中 `--no-error-on-unmatched-pattern` 用于允许暂存文件经过 Oxlint ignore 过滤后没有可 lint 文件，避免为 `.d.ts` 等文件额外拆出多套规则。
 9. 删除 Prettier 配置文件。
 10. 运行格式化：
     ```bash

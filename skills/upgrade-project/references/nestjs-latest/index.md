@@ -6,7 +6,8 @@
 
 - NestJS 升级、`nestjs latest`、`@nestjs/*` 升级；
 - `source-map-support`、`--enable-source-maps`、Node.js source map；
-- `package.json` 的 `start`、`typecheck` 脚本；
+- `package.json` 的 `start`、`start:prod`、`typecheck` 脚本；
+- `pm2.config.cjs` 的 Node.js 启动参数；
 - `x86-debian.Dockerfile`、NestJS latest 对应 Dockerfile 模板；
 - Vitest 项目中清理 `tsconfig-paths`；
 - 将一次 NestJS 升级经验沉淀成可复用流程。
@@ -19,22 +20,27 @@
 
 1. 将项目中已有的 NestJS 直接依赖升级到 latest，依赖分区保持原样。
 2. 移除 `source-map-support` 及其注册代码，改用 Node.js 原生 source map 能力。
-3. 将 `package.json` 的 `scripts.start` 设置为 `node --enable-source-maps dist/src/main.js`。
-4. 确保 `package.json` 存在并使用精确的 `scripts.typecheck: "tsc --noEmit"`。
-5. 如果项目已经是 Vitest，移除 `tsconfig-paths` 直接依赖以及只服务于 Jest/ts-node 测试链路的残留引用。
-6. 更新锁文件，并运行项目已有验证命令。
-7. 如果用户明确要求同步 Dockerfile，以 `x86-debian.Dockerfile` 作为 NestJS 服务镜像模板。
+3. 将 `package.json` 中直接用 `node` 运行编译产物的脚本加上 `--enable-source-maps`，默认 `scripts.start` 和 `scripts.start:prod` 都使用 `node --enable-source-maps dist/src/main.js`。
+4. 确保 `pm2.config.cjs` 中启动编译产物的应用配置包含 `node_args: "--enable-source-maps"`。
+5. 确保 `package.json` 存在并使用精确的 `scripts.typecheck: "tsc --noEmit"`。
+6. 确保 `nest-cli.json` 的 `compilerOptions.deleteOutDir` 为 `true`。
+7. 如果项目已经是 Vitest，移除 `tsconfig-paths` 直接依赖以及只服务于 Jest/ts-node 测试链路的残留引用。
+8. 更新锁文件，并运行项目已有验证命令。
+9. 如果用户明确要求同步 Dockerfile，以 `x86-debian.Dockerfile` 作为 NestJS 服务镜像模板。
 
-脚本模板见同目录 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，依赖命令见 `dependencies.md`，清理示例见 `source-map-support.md` / `tsconfig-paths.md`，Dockerfile 模板见 `dockerfile.md`，验证命令见 `commands.md`，汇报模板见 `report.md`。
+脚本模板见同目录 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，`nest-cli.json` 模板见 `nest-cli.md`，`pm2.config.cjs` 模板见 `pm2.md`，依赖命令见 `dependencies.md`，清理示例见 `source-map-support.md` / `tsconfig-paths.md`，Dockerfile 模板见 `dockerfile.md`，验证命令见 `commands.md`，汇报模板见 `report.md`。
 
 ## 默认迁移边界
 
 默认要做：
 
-- 检查 `package.json`、锁文件、NestJS 配置、测试框架配置和启动入口。
+- 检查 `package.json`、锁文件、`nest-cli.json`、NestJS 配置、测试框架配置和启动入口。
 - 升级已经存在的 `@nestjs/*` 直接依赖，例如 `@nestjs/common`、`@nestjs/core`、`@nestjs/platform-*`、`@nestjs/config`、`@nestjs/swagger`、`@nestjs/testing`、`@nestjs/cli`、`@nestjs/schematics` 等。
 - 移除 `source-map-support`、`@types/source-map-support` 直接依赖，以及 `import "source-map-support/register"`、`require("source-map-support/register")`、`sourceMapSupport.install()` 等注册代码。
-- 修改 `scripts.start` 和 `scripts.typecheck` 到目标值。
+- 修改所有直接用 `node` 运行编译产物的脚本，确保带 `--enable-source-maps`；默认包括 `scripts.start` 和 `scripts.start:prod`。
+- 同步 `pm2.config.cjs` 的 `node_args: "--enable-source-maps"`。
+- 修改 `scripts.typecheck` 到 `tsc --noEmit`。
+- 将 `nest-cli.json` 的 `compilerOptions.deleteOutDir` 设置为 `true`。
 - Vitest 项目移除 `tsconfig-paths` 直接依赖。
 - 用户明确要求 Dockerfile 模板时，使用同目录 `dockerfile.md` 中的 `x86-debian.Dockerfile` 模板。
 
@@ -62,9 +68,15 @@
         ▼
 是否存在 source-map-support？
         │
-        ├─ 是：删除依赖和注册代码，并设置 scripts.start
+        ├─ 是：删除依赖和注册代码，并给所有 node 运行编译产物的脚本加 --enable-source-maps
         │
-        └─ 否：仍检查 scripts.start 是否已启用 Node source map
+        └─ 否：仍检查所有 node 运行编译产物的脚本是否已启用 Node source map
+        │
+        ▼
+检查 pm2.config.cjs
+        │
+        ├─ 启动编译产物：确保 node_args 为 "--enable-source-maps"
+        └─ 不存在或不启动编译产物：不新增 PM2 配置
         │
         ▼
 检查 scripts.typecheck
@@ -72,6 +84,12 @@
         ├─ 缺失：新增 "tsc --noEmit"
         ├─ 一致：保留
         └─ 不一致：改为 "tsc --noEmit"，并在汇报说明
+        │
+        ▼
+检查 nest-cli.json 的 compilerOptions.deleteOutDir
+        │
+        ├─ 已是 true：保留
+        └─ 缺失或不是 true：改为 true
         │
         ▼
 当前测试框架是否是 Vitest？
@@ -96,23 +114,28 @@
 以 pnpm 项目为例，其他包管理器按锁文件替换命令。
 
 1. 检查当前工作区是否有未提交改动，避免覆盖用户已有修改。
-2. 读取 `package.json`：
+2. 读取 `package.json`、`nest-cli.json` 和 `pm2.config.cjs`：
    - `dependencies` / `devDependencies` 中的 `@nestjs/*`、`source-map-support`、`@types/source-map-support`、`tsconfig-paths`；
-   - `scripts.start`、`scripts.typecheck`、`scripts.build`、`scripts.test`；
+   - `scripts.start`、`scripts.start:prod`、`scripts.typecheck`、`scripts.build`、`scripts.test`；
+   - 所有直接使用 `node` 运行 `dist` 编译产物的脚本；
+   - `pm2.config.cjs` 中启动编译产物的应用配置；
+   - `compilerOptions.deleteOutDir`；
    - 是否有 `jest` 字段或测试相关脚本。
 3. 判断包管理器：优先按 `pnpm-lock.yaml`、`package-lock.json`、`yarn.lock`、`bun.lockb`。
 4. 升级已有 NestJS 直接依赖到 latest，保持 dependencies / devDependencies 分区，不随意新增不在项目中的 NestJS 包。
 5. 移除 `source-map-support` 直接依赖和注册代码。
-6. 修改 `scripts.start` 为 `node --enable-source-maps dist/src/main.js`。
-7. 确保 `scripts.typecheck` 为 `tsc --noEmit`。如果已有但不一致，改到目标值并在汇报里说明原值。
-8. 判断当前项目是否是 Vitest：
+6. 将所有直接使用 `node` 运行 `dist` 编译产物的脚本加上 `--enable-source-maps`；默认 `scripts.start` 和 `scripts.start:prod` 都使用 `node --enable-source-maps dist/src/main.js`。
+7. 如果存在 `pm2.config.cjs` 且应用通过 PM2 启动编译产物，确保对应应用配置包含 `node_args: "--enable-source-maps"`。
+8. 确保 `scripts.typecheck` 为 `tsc --noEmit`。如果已有但不一致，改到目标值并在汇报里说明原值。
+9. 确保 `nest-cli.json` 的 `compilerOptions.deleteOutDir` 为 `true`。
+10. 判断当前项目是否是 Vitest：
    - `package.json` 有 `vitest` 依赖或脚本；
    - 存在 `vitest.config.*`；
    - 测试代码从 `vitest` 导入 API。
-9. 如果是 Vitest，移除 `tsconfig-paths` 直接依赖，并清理只属于 Jest/ts-node 测试链路的引用。Vitest / Vite 的路径别名应使用项目已有的 `resolve.tsconfigPaths` 或 Vite 配置方式。
-10. 更新锁文件。
-11. 如果用户明确要求同步 Dockerfile，按 `dockerfile.md` 的 `x86-debian.Dockerfile` 模板更新项目 Dockerfile；不要把 registry、推送脚本或部署流程混入本阶段。
-12. 运行验证命令：优先 `typecheck`、`build`，再运行本次影响相关的测试。命令失败时，保留失败输出并判断是否属于本次迁移范围。
+11. 如果是 Vitest，移除 `tsconfig-paths` 直接依赖，并清理只属于 Jest/ts-node 测试链路的引用。Vitest / Vite 的路径别名应使用项目已有的 `resolve.tsconfigPaths` 或 Vite 配置方式。
+12. 更新锁文件。
+13. 如果用户明确要求同步 Dockerfile，按 `dockerfile.md` 的 `x86-debian.Dockerfile` 模板更新项目 Dockerfile；不要把 registry、推送脚本或部署流程混入本阶段。
+14. 运行验证命令：优先 `typecheck`、`build`，再运行本次影响相关的测试。命令失败时，保留失败输出并判断是否属于本次迁移范围。
 
 ## source-map-support 处理
 
@@ -122,7 +145,9 @@
 
 - 删除 `source-map-support` 和 `@types/source-map-support` 直接依赖。
 - 删除源码中的 `source-map-support/register` 注册和 `sourceMapSupport.install()`。
-- 将 `package.json` 的 `scripts.start` 设置为 `node --enable-source-maps dist/src/main.js`。
+- 将 `package.json` 中所有直接使用 `node` 运行 `dist` 编译产物的脚本加上 `--enable-source-maps`。
+- 默认 `scripts.start` 和 `scripts.start:prod` 都设置为 `node --enable-source-maps dist/src/main.js`。
+- 如果存在 `pm2.config.cjs` 且应用通过 PM2 启动编译产物，同步加入 `node_args: "--enable-source-maps"`。
 - 如果项目的构建输出入口不是 `dist/src/main.js`，先核对实际 NestJS 构建配置；没有明确证据时按本迁移目标设置，并在汇报里说明。
 
 ## typecheck 脚本处理
@@ -142,6 +167,26 @@
 - 没有 `typecheck`：新增。
 - 已有且完全等于 `tsc --noEmit`：保留。
 - 已有但不一致：改为 `tsc --noEmit`，并在汇报中写明原命令和新命令。
+
+## nest-cli.json 处理
+
+NestJS latest 模板要求构建前清理旧输出目录，避免历史 dist 文件残留影响 Docker 镜像和本地构建结果。
+
+目标配置：
+
+```json
+{
+  "compilerOptions": {
+    "deleteOutDir": true
+  }
+}
+```
+
+处理规则：
+
+- `deleteOutDir` 已是 `true`：保留。
+- `deleteOutDir` 为 `false` 或缺失：改为 `true`。
+- 只改这个配置项，不顺手重排 `nest-cli.json` 或改 builder / assets / sourceRoot。
 
 ## Vitest 项目的 tsconfig-paths 清理
 
@@ -174,12 +219,17 @@
 
 ## Dockerfile 模板处理
 
-当用户明确要求 NestJS latest reference 同步 Dockerfile 模板时，使用同目录 `dockerfile.md` 的 `x86-debian.Dockerfile` 模板。这个模板来自当前项目的 `x86-debian.Dockerfile`，用于 Node.js 24 / pnpm / NestJS 服务端项目。
+当用户明确要求 NestJS latest reference 同步 Dockerfile 模板时，使用同目录 `dockerfile.md` 的 `x86-debian.Dockerfile` 模板。这个模板来自当前项目的 `x86-debian.Dockerfile`，用于 Node.js 26 / pnpm / NestJS 服务端项目。
 
 处理规则：
 
 - 默认文件名是 `x86-debian.Dockerfile`。
-- 保留多阶段结构：`base` → `install` → `format` / `lint` / `test` / `build` → `production`；当前项目没有独立 `test:cov` 脚本，因此模板不保留 `test-cov` / `coverage-report` target。
+- 不添加模板没有要求的 `ENV PRISMA_SKIP_POSTINSTALL_GENERATE=true`。
+- 不添加伪造的 `ARG DATABASE_URL=mysql://prisma:prisma@localhost:3306/prisma`；不要为了让 Prisma generate 通过而编造数据库连接串。
+- 保留多阶段结构：`base` → `install` → `format` / `lint` / `test` / `coverage-report` / `build` → `production`。
+- `test` 阶段运行 `pnpm test:cov`；不要再新增单独的 `test-cov` 阶段。
+- `coverage-report` 从 `test` 阶段复制 `/app/coverage/`。
+- `production` 阶段的 `ENV NODE_ENV=production`、`ENV LANG=C.utf8`、`ENV LC_ALL=C.utf8` 放在一起。
 - 保留 `RUN npm pkg delete scripts.prepare`，避免容器安装依赖时触发本地 prepare 钩子。
 - 构建入口、镜像 tag、registry 推送和 `docker-build.sh` 细节仍属于 `references/docker-build/index.md`；不要把部署流程混进 NestJS latest 升级，除非用户同时要求。
 
@@ -190,14 +240,16 @@
 - 已有 `@nestjs/*` 直接依赖已升级到 latest，依赖分区未被无故改变。
 - `package.json` 不再直接依赖 `source-map-support` 和 `@types/source-map-support`。
 - 源码不再注册 `source-map-support`。
-- `scripts.start` 为 `node --enable-source-maps dist/src/main.js`。
+- `package.json` 中直接使用 `node` 运行 `dist` 编译产物的脚本都包含 `--enable-source-maps`，默认 `scripts.start` 和 `scripts.start:prod` 为 `node --enable-source-maps dist/src/main.js`。
+- 如果存在 `pm2.config.cjs` 且通过 PM2 启动编译产物，应用配置包含 `node_args: "--enable-source-maps"`。
 - `scripts.typecheck` 为 `tsc --noEmit`。
+- `nest-cli.json` 的 `compilerOptions.deleteOutDir` 为 `true`。
 - 如果项目是 Vitest，`package.json` 不再直接依赖 `tsconfig-paths`，也没有 Jest/ts-node 测试链路残留引用。
 - 锁文件已随包管理器命令更新。
-- 如果用户要求同步 Dockerfile，`x86-debian.Dockerfile` 已按模板更新，或明确说明没有同步的原因。
+- 如果用户要求同步 Dockerfile，`x86-debian.Dockerfile` 已按模板更新：不含 `PRISMA_SKIP_POSTINSTALL_GENERATE` 和伪造的 `DATABASE_URL`，`test` 阶段运行 `pnpm test:cov`，`coverage-report` 从 `test` 阶段复制覆盖率产物，生产环境 ENV 连续放置。
 - 已运行 `typecheck`、`build` 和必要测试，或明确说明跳过原因 / 失败原因。
 - 未混入 lint、format、ESM、Docker 或业务逻辑重构等非本阶段改动。
 
 ## 模板文件
 
-`package.json` 脚本模板见同目录 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，依赖命令见 `dependencies.md`，source-map-support 清理示例见 `source-map-support.md`，tsconfig-paths 搜索模式见 `tsconfig-paths.md`，复杂判断表达模板见 `flow.md`，`x86-debian.Dockerfile` 模板见 `dockerfile.md`，验证命令见 `commands.md`，汇报模板见 `report.md`。
+`package.json` 脚本模板见同目录 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，`nest-cli.json` 模板见 `nest-cli.md`，`pm2.config.cjs` 模板见 `pm2.md`，依赖命令见 `dependencies.md`，source-map-support 清理示例见 `source-map-support.md`，tsconfig-paths 搜索模式见 `tsconfig-paths.md`，复杂判断表达模板见 `flow.md`，`x86-debian.Dockerfile` 模板见 `dockerfile.md`，验证命令见 `commands.md`，汇报模板见 `report.md`。

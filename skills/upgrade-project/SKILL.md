@@ -64,7 +64,7 @@ metadata:
 6. **保持差异窄。** 只修改属于本次迁移的文件。不要把代码检查、测试框架、ESM、Docker、CI、IDE 或业务代码改动混进来，除非用户明确要求。
 7. **脚本变更要追踪调用方。** 迁移会影响 `format`、`lint`、`test`、`build`、`start` 或 `deploy` 脚本时，同步检查 Dockerfile、`docker-build.sh`、CI、husky、lint-staged 和项目文档中是否引用这些脚本，避免本地命令已改但构建链路仍调用旧命令。
 8. **使用项目已有包管理器。** 根据 `pnpm-lock.yaml`、`package-lock.json`、`yarn.lock`、`bun.lockb` 判断使用哪个安装和移除命令。
-9. **同步 lint-staged 配置。** 迁移会影响格式化、代码检查、测试或其他提交前检查命令时，检查 `package.json` 的 `lint-staged` 字段、`.lintstagedrc*`、`lint-staged.config.*` 等配置；如果需要新增或重命名独立配置文件，统一命名为 `lint-staged.config.js`，ESM 项目使用 `export default`；如果仍引用旧工具或旧命令，按同一迁移目标同步更新，只改本次迁移涉及的规则，不扩大匹配范围。
+9. **同步 lint-staged 配置。** 迁移会影响格式化、代码检查、测试或其他提交前检查命令时，检查 `package.json` 的 `lint-staged` 字段、`.lintstagedrc*`、`lint-staged.config.*` 等配置；如果需要新增或重命名独立配置文件，统一命名为 `lint-staged.config.js`，ESM 项目使用 `export default`；如果仍引用旧工具或旧命令，按同一迁移目标同步更新，只改本次迁移涉及的规则，不扩大匹配范围。项目同时使用 Oxfmt 和 Oxlint 时，默认模板为：`export default { "*.ts": ["oxfmt --write", "oxlint --config oxlint.config.ts --fix --no-error-on-unmatched-pattern"] };`，不要为 `.d.ts` 等被 Oxlint ignore 的文件额外拆出多套规则。
 10. **运行迁移命令。** 格式化器迁移只接受纯格式化差异。如果格式化改动很多文件，应和业务逻辑改动分开。
 11. **检查稳定性。** 对格式化器等幂等命令连续运行两次，确认第二次不会产生新的差异。
 12. **使用现有验证。** 优先运行项目已有的构建、类型检查或冒烟验证命令。已知会自动修改文件的命令，运行前先确认项目说明和用户意图。

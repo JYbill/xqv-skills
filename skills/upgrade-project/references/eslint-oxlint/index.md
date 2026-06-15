@@ -183,9 +183,16 @@
    ```
    如果项目还有其他只供 ESLint 使用的直接依赖，也应一并删除。不要删除 Jest、Oxfmt、Prettier 或测试框架依赖，除非本次计划明确要求。
 8. 同步 lint-staged：
-   - 如果 lint-staged 直接调用 `eslint`，改成 `oxlint --config oxlint.config.ts --fix` 或项目约定命令。
+   - 如果 lint-staged 直接调用 `eslint`，改成 `oxlint --config oxlint.config.ts --fix --no-error-on-unmatched-pattern` 或项目约定命令。
+   - 如果项目同时使用 Oxfmt 和 Oxlint，`lint-staged.config.js` 默认模板为：
+     ```js
+     export default {
+       "*.ts": ["oxfmt --write", "oxlint --config oxlint.config.ts --fix --no-error-on-unmatched-pattern"],
+     };
+     ```
+   - `--no-error-on-unmatched-pattern` 用于允许暂存文件经过 `ignorePatterns` 过滤后没有可 lint 文件，例如只提交 `.d.ts`。
    - 如果 lint-staged 调用 `pnpm lint`，确认迁移后仍符合预期。
-   - 不要把全量检查范围盲目复制进 lint-staged 命令；lint-staged 会追加暂存文件路径。
+   - 不要把全量检查范围盲目复制进 lint-staged 命令；lint-staged 会追加暂存文件路径，也不要为 `.d.ts` 等被 Oxlint ignore 的文件额外拆出多套规则。
 9. 搜索 ESLint 残留：
    ```bash
    rg -n "eslint|ESLint|\.eslint|typescript-eslint|@eslint|eslint-config-prettier|globals" .
