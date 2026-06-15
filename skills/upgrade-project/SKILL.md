@@ -1,6 +1,6 @@
 ---
 name: upgrade-project
-description: 当用户要求升级、现代化、迁移或统一 JavaScript/TypeScript 项目的工具链、框架、测试、构建、部署和项目规范时使用这个技能。覆盖 Prettier/Oxfmt、ESLint/Oxlint、Jest/Vitest、CJS/ESM、NestJS latest、SWC、Dockerfile/.dockerignore/docker-build.sh、AGENTS.md/CLAUDE.md 等迁移；用户提到“升级项目”“迁移技术栈”“替换旧工具”“项目标准化”“沉淀成规范”或相关工具名时，应优先使用。
+description: 当用户要求升级、现代化、迁移或统一 JavaScript/TypeScript 项目的工具链、框架、测试、构建、部署和项目规范时使用这个技能。覆盖 Prettier/Oxfmt、ESLint/Oxlint、Jest/Vitest、CJS/ESM、NestJS latest、SWC、Dockerfile/.dockerignore/docker-build.sh、.gitignore、AGENTS.md/CLAUDE.md 等迁移；用户提到“升级项目”“迁移技术栈”“替换旧工具”“项目标准化”“沉淀成规范”或相关工具名时，应优先使用。
 metadata:
   tags: 升级, 迁移, 重构, 工具链, javascript, typescript
 ---
@@ -77,6 +77,7 @@ metadata:
 - `references/jest-vitest/index.md`：Jest 到 Vitest 的测试框架迁移。任务提到 Jest、Vitest、`vitest.config.*`、`jest.config.*`、`ts-jest`、`@types/jest`、`*.spec.ts`、`*.integration-spec.ts`、`*.e2e-spec.ts`、测试分层，或要求替换项目测试命令时，先读取这个文件；配置、脚本和汇报模板见同目录 `template.md`。
 - `references/global-agent/index.md`：通用后台项目提示词提取。任务提到 AGENTS.md、CLAUDE.md、项目提示词、后台项目提示词、通用 agent 提示词，或要求从项目约定中提取常用命令、测试要求、标准文档、反模式时，先读取这个文件；默认正文落地到 `AGENTS.md`，`CLAUDE.md` 只写 `@AGENTS.md`，模板见同目录 `template.md`。
 - `references/docker-build/index.md`：Docker 构建与部署流程。任务提到 Dockerfile、`.dockerignore`、`x86-debian.Dockerfile`、`docker-build.sh`、`deploy:docker`、`docker build`、`docker push`、镜像发布、`images.tar`，或要求统一后台项目 Docker 构建和部署入口时，先读取这个文件；构建命令、`.dockerignore` 和汇报模板见同目录 `template.md`。
+- `references/gitignore/index.md`：Git 忽略规则模板。任务提到 `.gitignore`、gitignore、忽略文件、提交忽略规则，或要求统一后台项目本地配置、缓存、日志、环境文件、上传目录和 AI/agent 工作目录的忽略规则时，先读取这个文件；`.gitignore` 模板和汇报模板见同目录 `template.md`。
 - `references/cjs-esm/index.md`：TypeScript 项目的 CommonJS/CJS 到 ESM 迁移。任务提到 `"type": "module"`、`verbatimModuleSyntax`、`import type`、CJS 转 ESM、模块系统迁移，或迁移后需要修复类型导入错误时，先读取这个文件；配置、类型导入和汇报模板见同目录 `template.md`。
 - `references/nestjs-latest/index.md`：NestJS 项目升级到 latest。任务提到 NestJS 升级、`@nestjs/*`、`source-map-support`、`--enable-source-maps`、`typecheck`、`tsconfig-paths`，或要求把 NestJS 后台项目升级到最新版本时，先读取这个文件；脚本、依赖处理、Dockerfile 模板和汇报模板见同目录 `template.md`。
 - `references/swc/index.md`：SWC 配置整理。任务提到 SWC、`.swcrc`、`swcrcPath`、`@swc/core`、`@swc/cli`、`@swc/helpers`、NestJS SWC builder，或要求统一 SWC 配置文件命名和内容时，先读取这个文件；`.swcrc`、`nest-cli.json` 片段和汇报模板见同目录 `template.md`。

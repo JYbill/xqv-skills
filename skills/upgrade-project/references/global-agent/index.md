@@ -31,6 +31,7 @@
 - ESLint 到 Oxlint：`references/eslint-oxlint/index.md`。
 - Jest 到 Vitest、Vitest projects、测试框架配置：`references/jest-vitest/index.md`。
 - Dockerfile、`docker-build.sh`、镜像发布：`references/docker-build/index.md`。
+- `.gitignore`、忽略文件、提交忽略规则：`references/gitignore/index.md`。
 - CommonJS/CJS 到 ESM：`references/cjs-esm/index.md`。
 - NestJS 升级到 latest：`references/nestjs-latest/index.md`。
 - SWC 配置：`references/swc/index.md`。
