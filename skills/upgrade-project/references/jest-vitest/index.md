@@ -18,7 +18,7 @@
 
 - 新增 Vitest 及项目需要的转换、覆盖率依赖。
 - 新增或更新 `vitest.config.ts`。
-- 将现有测试脚本迁移到 Vitest，并优先使用 Vitest project 区分普通测试和 e2e。
+- 将现有测试脚本迁移到 Vitest，并将 `package.json` 的 `test` / `test:watch` / `test:cov` 固定到 `test` project；e2e 仍使用独立 project 或项目已有独立入口。
 - 删除 Jest 配置文件、`package.json` 的 `jest` 配置字段和 Jest 相关直接依赖。
 - 将测试代码里的 Jest API 改为 Vitest API。
 - 同步 lint-staged、husky、CI 或文档中直接调用 Jest 的命令。
@@ -80,7 +80,7 @@ test/debug/*.debug.ts        # 手动调试脚本，不纳入常规自动化测�
 
 推荐 project 划分：
 
-- `test` project：运行 `src/**/*.spec.ts` 和 `src/**/*.integration-spec.ts`。
+- `test` project：运行 `src/**/*.spec.ts` 和 `src/**/*.integration-spec.ts`，也是 `package.json` 中 `test` / `test:watch` / `test:cov` 的目标。
 - `e2e` project：运行 `test/**/*.e2e-spec.ts`，并关闭文件级并行，避免多个 e2e 同时抢占共享应用、数据库或端口资源。
 - 顶层 `test.include` 设置为 `[]`，避免 root suite 和 project suite 重复收集测试文件。
 - 覆盖率排除测试文件本身，例如 `src/**/*.spec.ts`、`src/**/*.integration-spec.ts`。
@@ -128,7 +128,7 @@ test/debug/*.debug.ts        # 手动调试脚本，不纳入常规自动化测�
 具体步骤：
 
 1. 检查当前项目状态：
-   - `package.json` 的 `scripts.test`、`test:e2e`，以及是否还有 `test:watch`、`test:cov` 等旧脚本。
+   - `package.json` 的 `scripts.test`、`test:watch`、`test:cov` 是否使用目标 Vitest 命令，以及是否还有旧的 `test:e2e` 或 Jest 命令需要迁移。
    - `package.json` 的 `lint-staged` 字段、`.lintstagedrc*`、`lint-staged.config.*`；如果需要保留或迁移独立配置文件，目标文件名统一为 `lint-staged.config.js`；husky hook、CI 文件中是否直接调用 Jest。
    - `devDependencies` 中的 Jest 相关依赖。
    - `jest.config.*`、`test/jest-e2e.json`、`package.json` 的 `jest` 字段。
@@ -139,12 +139,12 @@ test/debug/*.debug.ts        # 手动调试脚本，不纳入常规自动化测�
 3. 运行 `pnpm exec vitest --help` 验证 CLI 能力。
 4. 新增或更新 `vitest.config.ts`。推荐配置见同目录 `template.md`。
 5. 修改 `package.json` 脚本。推荐脚本见同目录 `template.md`。
-6. 更新项目提示词或文档中的常用命令。编辑代码后优先运行本次修改相关的少量文件；需要整组验证时再运行 `--project test` 或 `--project e2e`。
+6. 更新项目提示词或文档中的常用命令。编辑代码后优先运行本次修改相关的少量文件；需要验证单元测试和集成测试整组时运行 `pnpm test` 或 `pnpm test:cov`，需要 e2e 时单独运行 `--project e2e` 或项目已有独立入口。
 7. 迁移测试代码 API。常见 API 替换见同目录 `template.md`。
 8. NestJS e2e 测试通常只需要替换测试框架 API，`@nestjs/testing` 和 `supertest` 不是 Jest 专用依赖，不要误删。保留应用关闭逻辑。
 9. 删除 Jest 配置和直接依赖，只删除项目直接依赖且确实属于 Jest 链路的包。不要删除 `@nestjs/testing`、`supertest`、`@types/supertest`。
 10. 搜索 Jest 残留，例如 `jest`、`Jest`、`ts-jest`、`@types/jest`、`jest-e2e`、`.jest`、`jest.`。如果残留是 `package.json` 的 `jest` 字段，按 Jest 配置处理：迁移必要语义后删除该字段。锁文件里的传递依赖名不一定要消失；非本次迁移的历史文档是否更新，按用户要求和项目约定判断。
-11. 运行验证命令：优先运行本次修改相关的测试文件；需要整组验证时运行 `pnpm exec vitest run --project test`、`pnpm exec vitest run --project e2e`，并运行项目类型检查或构建命令。
+11. 运行验证命令：优先运行本次修改相关的测试文件；需要验证单元测试和集成测试整组时运行 `pnpm test`，需要覆盖率时运行 `pnpm test:cov`；e2e 使用 `pnpm exec vitest run --project e2e` 或项目已有独立入口，并运行项目类型检查或构建命令。
 
 如果当前仓库还没有 `*.integration-spec.ts`，说明对应单文件命令不适用，不要虚报执行通过。
 
@@ -202,7 +202,7 @@ Vitest 的 `vi.mock` 也有提升行为，但和 Jest 不是逐字节兼容。�
 
 迁移完成后至少确认：
 
-- `package.json` 的测试脚本使用 `vitest`。
+- `package.json` 的测试脚本使用 Vitest，并包含以下三个命令：`"test": "vitest run --project test --passWithNoTests"`、`"test:watch": "vitest --project test"`、`"test:cov": "vitest run --coverage --project test --passWithNoTests"`。
 - `devDependencies` 中包含 `vitest`，覆盖率脚本需要时包含 `@vitest/coverage-v8`。
 - `devDependencies` 中不再包含 Jest 相关直接依赖。
 - 根目录存在 `vitest.config.ts`，并使用 Vitest projects 区分：
@@ -217,7 +217,7 @@ Vitest 的 `vi.mock` 也有提升行为，但和 Jest 不是逐字节兼容。�
 - `*.spec.ts` 没有真实数据库或外部服务访问。
 - `*.integration-spec.ts` 使用真实外部依赖且默认只读，不使用 mock 替代外部依赖。
 - `test/**/*.e2e-spec.ts` 仍只放在 `test/` 目录内，并保留 HTTP 完整链路语义。
-- 已优先运行本次修改相关的测试文件；需要整组验证时已运行 `--project test` / `--project e2e`。
+- 已优先运行本次修改相关的测试文件；需要整组验证时已运行 `pnpm test` / `pnpm test:cov`；e2e 按需单独运行 `--project e2e` 或项目已有独立入口。
 - 已运行 `pnpm typecheck` / `pnpm build`，或说明为什么本次未运行。
 - 未混入 ESLint / Oxlint、Prettier / Oxfmt、ESM、业务逻辑等非本阶段改动。
 
