@@ -7,6 +7,7 @@
 - `pm2.config.cjs` 已同步 `node_args: "--enable-source-maps"`。
 - `package.json` 的 `typecheck` 已设置为 `tsc --noEmit`。
 - `nest-cli.json` 的 `compilerOptions.deleteOutDir` 已设置为 `true`。
+- NestJS SWC builder 已通过 `swcrcPath: ".swcrc"` 指向根目录 `.swcrc`，`.swcrc` 已保留装饰器元数据并设置 `module.ignoreDynamic: true`。
 - 当前项目使用 Vitest，已移除 `tsconfig-paths` 直接依赖及相关旧测试链路残留。
 - 如用户要求同步 Dockerfile，`x86-debian.Dockerfile` 已按模板更新；如未要求，说明未处理 Dockerfile。
 

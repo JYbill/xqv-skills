@@ -8,11 +8,12 @@
 - `source-map-support`、`--enable-source-maps`、Node.js source map；
 - `package.json` 的 `start`、`start:prod`、`typecheck` 脚本；
 - `pm2.config.cjs` 的 Node.js 启动参数；
+- `.swcrc`、`@swc/core`、`@swc/cli`、`@swc/helpers`、`compilerOptions.builder.type: "swc"`、`swcrcPath`；
 - `x86-debian.Dockerfile`、NestJS latest 对应 Dockerfile 模板；
 - Vitest 项目中清理 `tsconfig-paths`；
 - 将一次 NestJS 升级经验沉淀成可复用流程。
 
-这份参考默认面向 TypeScript NestJS 服务端项目。默认只升级 NestJS 相关直接依赖和本文件列出的运行脚本、类型检查、测试路径插件清理；Dockerfile 只在用户明确要求时按 `x86-debian.Dockerfile` 模板同步。不顺手迁移 lint、format、ESM 或业务代码。
+这份参考默认面向 TypeScript NestJS 服务端项目。默认只升级 NestJS 相关直接依赖、NestJS 构建配置（含 SWC builder / `.swcrc`）和本文件列出的运行脚本、类型检查、测试路径插件清理；Dockerfile 只在用户明确要求时按 `x86-debian.Dockerfile` 模板同步。不顺手迁移 lint、format、ESM 或业务代码。
 
 ## 迁移目标
 
@@ -24,23 +25,25 @@
 4. 确保 `pm2.config.cjs` 中启动编译产物的应用配置包含 `node_args: "--enable-source-maps"`。
 5. 确保 `package.json` 存在并使用精确的 `scripts.typecheck: "tsc --noEmit"`。
 6. 确保 `nest-cli.json` 的 `compilerOptions.deleteOutDir` 为 `true`。
-7. 如果项目已经是 Vitest，移除 `tsconfig-paths` 直接依赖以及只服务于 Jest/ts-node 测试链路的残留引用。
-8. 更新锁文件，并运行项目已有验证命令。
-9. 如果用户明确要求同步 Dockerfile，以 `x86-debian.Dockerfile` 作为 NestJS 服务镜像模板。
+7. NestJS 项目使用 SWC builder 时，确保 `nest-cli.json` 通过 `swcrcPath: ".swcrc"` 指向根目录 `.swcrc`，并按 `swcrc.md` 同步 NestJS `.swcrc` 模板。
+8. 如果项目已经是 Vitest，移除 `tsconfig-paths` 直接依赖以及只服务于 Jest/ts-node 测试链路的残留引用。
+9. 更新锁文件，并运行项目已有验证命令。
+10. 如果用户明确要求同步 Dockerfile，以 `x86-debian.Dockerfile` 作为 NestJS 服务镜像模板。
 
-脚本模板见同目录 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，`nest-cli.json` 模板见 `nest-cli.md`，`pm2.config.cjs` 模板见 `pm2.md`，依赖命令见 `dependencies.md`，清理示例见 `source-map-support.md` / `tsconfig-paths.md`，Dockerfile 模板见 `dockerfile.md`，验证命令见 `commands.md`，汇报模板见 `report.md`。
+脚本模板见同目录 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，`nest-cli.json` 模板见 `nest-cli.md`，`.swcrc` 模板见 `swcrc.md`，`pm2.config.cjs` 模板见 `pm2.md`，依赖命令见 `dependencies.md`，清理示例见 `source-map-support.md` / `tsconfig-paths.md`，Dockerfile 模板见 `dockerfile.md`，验证命令见 `commands.md`，汇报模板见 `report.md`。
 
 ## 默认迁移边界
 
 默认要做：
 
-- 检查 `package.json`、锁文件、`nest-cli.json`、NestJS 配置、测试框架配置和启动入口。
+- 检查 `package.json`、锁文件、`nest-cli.json`、`.swcrc`、NestJS 配置、测试框架配置和启动入口。
 - 升级已经存在的 `@nestjs/*` 直接依赖，例如 `@nestjs/common`、`@nestjs/core`、`@nestjs/platform-*`、`@nestjs/config`、`@nestjs/swagger`、`@nestjs/testing`、`@nestjs/cli`、`@nestjs/schematics` 等。
 - 移除 `source-map-support`、`@types/source-map-support` 直接依赖，以及 `import "source-map-support/register"`、`require("source-map-support/register")`、`sourceMapSupport.install()` 等注册代码。
 - 修改所有直接用 `node` 运行编译产物的脚本，确保带 `--enable-source-maps`；默认包括 `scripts.start` 和 `scripts.start:prod`。
 - 同步 `pm2.config.cjs` 的 `node_args: "--enable-source-maps"`。
 - 修改 `scripts.typecheck` 到 `tsc --noEmit`。
 - 将 `nest-cli.json` 的 `compilerOptions.deleteOutDir` 设置为 `true`。
+- NestJS 项目使用 SWC builder 时，同步 `.swcrc`、`swcrcPath: ".swcrc"` 和 `@swc/helpers` 运行时依赖判断。
 - Vitest 项目移除 `tsconfig-paths` 直接依赖。
 - 用户明确要求 Dockerfile 模板时，使用同目录 `dockerfile.md` 中的 `x86-debian.Dockerfile` 模板。
 
@@ -48,6 +51,7 @@
 
 - 不新增项目原本没有的 NestJS 扩展包，除非最新 NestJS peer dependency 或用户需求明确要求。
 - 不把 Jest 到 Vitest、CJS 到 ESM、ESLint 到 Oxlint、Prettier 到 Oxfmt 混入本次迁移；这些属于其他 references。
+- 不把通用 Vitest SWC 配置混入 NestJS latest；通用模板放在 `references/jest-vitest/swcrc.md`。
 - 不默认重写 Docker 构建或部署流程；只有用户明确要求 Dockerfile 模板时，才按 `x86-debian.Dockerfile` 模板同步。
 - 不为了通过类型检查使用 `any`、`unknown`、`as any` 或 `as unknown as ...`。
 - 不修改业务逻辑来掩盖框架升级问题；先判断是否是依赖、类型或配置问题。
@@ -92,6 +96,12 @@
         └─ 缺失或不是 true：改为 true
         │
         ▼
+检查 NestJS SWC builder / .swcrc
+        │
+        ├─ 使用 SWC builder：确保 swcrcPath 为 ".swcrc"，并按 swcrc.md 同步 .swcrc
+        └─ 未使用 SWC builder：不强行切换构建器，除非用户明确要求
+        │
+        ▼
 当前测试框架是否是 Vitest？
         │
         ├─ 是：移除 tsconfig-paths 直接依赖和 Jest/ts-node 测试残留引用
@@ -114,12 +124,13 @@
 以 pnpm 项目为例，其他包管理器按锁文件替换命令。
 
 1. 检查当前工作区是否有未提交改动，避免覆盖用户已有修改。
-2. 读取 `package.json`、`nest-cli.json` 和 `pm2.config.cjs`：
-   - `dependencies` / `devDependencies` 中的 `@nestjs/*`、`source-map-support`、`@types/source-map-support`、`tsconfig-paths`；
+2. 读取 `package.json`、`nest-cli.json`、`.swcrc` 和 `pm2.config.cjs`：
+   - `dependencies` / `devDependencies` 中的 `@nestjs/*`、`source-map-support`、`@types/source-map-support`、`tsconfig-paths`、`@swc/core`、`@swc/cli`、`@swc/helpers`；
    - `scripts.start`、`scripts.start:prod`、`scripts.typecheck`、`scripts.build`、`scripts.test`；
    - 所有直接使用 `node` 运行 `dist` 编译产物的脚本；
    - `pm2.config.cjs` 中启动编译产物的应用配置；
-   - `compilerOptions.deleteOutDir`；
+   - `compilerOptions.deleteOutDir`、`compilerOptions.builder` 和 `swcrcPath`；
+   - `.swcrc` 的 NestJS 装饰器元数据配置、`module.type`、`module.ignoreDynamic`、`jsc.externalHelpers`；
    - 是否有 `jest` 字段或测试相关脚本。
 3. 判断包管理器：优先按 `pnpm-lock.yaml`、`package-lock.json`、`yarn.lock`、`bun.lockb`。
 4. 升级已有 NestJS 直接依赖到 latest，保持 dependencies / devDependencies 分区，不随意新增不在项目中的 NestJS 包。
@@ -128,14 +139,15 @@
 7. 如果存在 `pm2.config.cjs` 且应用通过 PM2 启动编译产物，确保对应应用配置包含 `node_args: "--enable-source-maps"`。
 8. 确保 `scripts.typecheck` 为 `tsc --noEmit`。如果已有但不一致，改到目标值并在汇报里说明原值。
 9. 确保 `nest-cli.json` 的 `compilerOptions.deleteOutDir` 为 `true`。
-10. 判断当前项目是否是 Vitest：
+10. 如果项目使用 SWC builder，确保 `nest-cli.json` 的 `compilerOptions.builder.type` 为 `"swc"`，`options.swcrcPath` 为 `".swcrc"`，并按 `swcrc.md` 同步根目录 `.swcrc`。如果 `.swcrc` 使用 `externalHelpers: true`，确认 `@swc/helpers` 运行时依赖可用。
+11. 判断当前项目是否是 Vitest：
    - `package.json` 有 `vitest` 依赖或脚本；
    - 存在 `vitest.config.*`；
    - 测试代码从 `vitest` 导入 API。
-11. 如果是 Vitest，移除 `tsconfig-paths` 直接依赖，并清理只属于 Jest/ts-node 测试链路的引用。Vitest / Vite 的路径别名应使用项目已有的 `resolve.tsconfigPaths` 或 Vite 配置方式。
-12. 更新锁文件。
-13. 如果用户明确要求同步 Dockerfile，按 `dockerfile.md` 的 `x86-debian.Dockerfile` 模板更新项目 Dockerfile；不要把 registry、推送脚本或部署流程混入本阶段。
-14. 运行验证命令：优先 `typecheck`、`build`，再运行本次影响相关的测试。命令失败时，保留失败输出并判断是否属于本次迁移范围。
+12. 如果是 Vitest，移除 `tsconfig-paths` 直接依赖，并清理只属于 Jest/ts-node 测试链路的引用。Vitest / Vite 的路径别名应使用项目已有的 `resolve.tsconfigPaths` 或 Vite 配置方式。
+13. 更新锁文件。
+14. 如果用户明确要求同步 Dockerfile，按 `dockerfile.md` 的 `x86-debian.Dockerfile` 模板更新项目 Dockerfile；不要把 registry、推送脚本或部署流程混入本阶段。
+15. 运行验证命令：优先 `typecheck`、`build`，再运行本次影响相关的测试。命令失败时，保留失败输出并判断是否属于本次迁移范围。
 
 ## source-map-support 处理
 
@@ -186,7 +198,20 @@ NestJS latest 模板要求构建前清理旧输出目录，避免历史 dist 文
 
 - `deleteOutDir` 已是 `true`：保留。
 - `deleteOutDir` 为 `false` 或缺失：改为 `true`。
-- 只改这个配置项，不顺手重排 `nest-cli.json` 或改 builder / assets / sourceRoot。
+- 处理 `deleteOutDir` 时不顺手重排 `nest-cli.json`，也不改 assets / sourceRoot；SWC builder 只按下一节规则处理。
+
+## NestJS SWC 配置处理
+
+NestJS 项目使用 SWC builder 时，`.swcrc` 需要保留 NestJS 装饰器和元数据配置。模板见同目录 `swcrc.md`。
+
+处理规则：
+
+- `nest-cli.json` 已使用 SWC builder：保留 builder，并确保 `options.swcrcPath` 为 `".swcrc"`。
+- 用户明确要求启用 NestJS SWC builder：设置 `compilerOptions.builder.type: "swc"`，并写入 `options.swcrcPath: ".swcrc"`。
+- `.swcrc` 使用 `parser.syntax: "typescript"`、`parser.decorators: true`、`transform.legacyDecorator: true`、`transform.decoratorMetadata: true`。
+- `.swcrc` 的 `module.ignoreDynamic` 设置为 `true`，保留动态 `import()`；不要再显式配置 `jsc.parser.dynamicImport`。
+- `.swcrc` 使用 `jsc.externalHelpers: true` 时，确认 `@swc/helpers` 在运行时可用。服务端项目通常放在 `dependencies`。
+- `module.type: "nodenext"` 适合 ESM / NodeNext 项目；迁移到非 NodeNext 项目时先读取 `tsconfig` 和 `package.json.type`，不要借 SWC 配置整理顺手做 ESM 迁移。
 
 ## Vitest 项目的 tsconfig-paths 清理
 
@@ -244,6 +269,7 @@ NestJS latest 模板要求构建前清理旧输出目录，避免历史 dist 文
 - 如果存在 `pm2.config.cjs` 且通过 PM2 启动编译产物，应用配置包含 `node_args: "--enable-source-maps"`。
 - `scripts.typecheck` 为 `tsc --noEmit`。
 - `nest-cli.json` 的 `compilerOptions.deleteOutDir` 为 `true`。
+- NestJS 项目使用 SWC builder 时，根目录 `.swcrc` 已按 `swcrc.md` 同步，`nest-cli.json` 通过 `swcrcPath: ".swcrc"` 指向它，并且 `module.ignoreDynamic` 为 `true`。
 - 如果项目是 Vitest，`package.json` 不再直接依赖 `tsconfig-paths`，也没有 Jest/ts-node 测试链路残留引用。
 - 锁文件已随包管理器命令更新。
 - 如果用户要求同步 Dockerfile，`x86-debian.Dockerfile` 已按模板更新：不含 `PRISMA_SKIP_POSTINSTALL_GENERATE` 和伪造的 `DATABASE_URL`，`test` 阶段运行 `pnpm test:cov`，`coverage-report` 从 `test` 阶段复制覆盖率产物，生产环境 ENV 连续放置。
@@ -252,4 +278,4 @@ NestJS latest 模板要求构建前清理旧输出目录，避免历史 dist 文
 
 ## 模板文件
 
-`package.json` 脚本模板见同目录 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，`nest-cli.json` 模板见 `nest-cli.md`，`pm2.config.cjs` 模板见 `pm2.md`，依赖命令见 `dependencies.md`，source-map-support 清理示例见 `source-map-support.md`，tsconfig-paths 搜索模式见 `tsconfig-paths.md`，复杂判断表达模板见 `flow.md`，`x86-debian.Dockerfile` 模板见 `dockerfile.md`，验证命令见 `commands.md`，汇报模板见 `report.md`。
+`package.json` 脚本模板见同目录 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，`nest-cli.json` 模板见 `nest-cli.md`，`.swcrc` 模板见 `swcrc.md`，`pm2.config.cjs` 模板见 `pm2.md`，依赖命令见 `dependencies.md`，source-map-support 清理示例见 `source-map-support.md`，tsconfig-paths 搜索模式见 `tsconfig-paths.md`，复杂判断表达模板见 `flow.md`，`x86-debian.Dockerfile` 模板见 `dockerfile.md`，验证命令见 `commands.md`，汇报模板见 `report.md`。

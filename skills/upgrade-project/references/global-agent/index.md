@@ -33,8 +33,8 @@
 - Dockerfile、`docker-build.sh`、镜像发布：`references/docker-build/index.md`。
 - `.gitignore`、忽略文件、提交忽略规则：`references/gitignore/index.md`。
 - CommonJS/CJS 到 ESM：`references/cjs-esm/index.md`。
-- NestJS 升级到 latest：`references/nestjs-latest/index.md`。
-- SWC 配置：`references/swc/index.md`。
+- NestJS 升级和 NestJS SWC 配置：`references/nestjs-latest/index.md`。
+- Vitest 通用 SWC 配置：`references/jest-vitest/swcrc.md`。
 
 ## 内容组织
 

@@ -85,7 +85,7 @@ test/debug/*.debug.ts        # 手动调试脚本，不纳入常规自动化测�
 - 顶层 `test.include` 设置为 `[]`，避免 root suite 和 project suite 重复收集测试文件。
 - 覆盖率排除测试文件本身，例如 `src/**/*.spec.ts`、`src/**/*.integration-spec.ts`。
 
-配置模板见同目录 `vitest-config.md`，脚本模板见 `package.md`，验证命令见 `commands.md`，测试 API 迁移模板见 `vitest-api.md`，汇报模板见 `report.md`。
+配置模板见同目录 `vitest-config.md`，通用 SWC 配置模板见 `swcrc.md`，脚本模板见 `package.md`，验证命令见 `commands.md`，测试 API 迁移模板见 `vitest-api.md`，汇报模板见 `report.md`。
 
 ## 推荐执行流程
 
@@ -135,7 +135,7 @@ test/debug/*.debug.ts        # 手动调试脚本，不纳入常规自动化测�
    - 如果 Jest 配置写在 `package.json` 中，先读取其中的 `testMatch` / `testRegex`、`testEnvironment`、`moduleNameMapper`、`setupFiles` / `setupFilesAfterEnv`、`collectCoverageFrom`、`coverageDirectory`、`coveragePathIgnorePatterns`、`testPathIgnorePatterns` 等语义，再迁移到 `vitest.config.ts`，不要只删除字段。
    - 测试文件是否按 `*.spec.ts`、`*.integration-spec.ts`、`test/**/*.e2e-spec.ts` 分层。
    - 当前工作区是否已有未提交改动。
-2. 安装 Vitest 相关依赖。NestJS / TypeScript 项目常见组合是 `vitest`、`vite`、`@vitest/coverage-v8`、`unplugin-swc`。如果项目不使用 SWC 或已有其他 Vite 转换方案，按项目事实调整，不要盲目新增无用依赖。
+2. 安装 Vitest 相关依赖。NestJS / TypeScript 项目常见组合是 `vitest`、`vite`、`@vitest/coverage-v8`、`unplugin-swc`。如果 `vitest.config.ts` 使用 `unplugin-swc` 并通过 `configFile: "./.swcrc"` 读取配置，通用 `.swcrc` 模板见同目录 `swcrc.md`。如果项目不使用 SWC 或已有其他 Vite 转换方案，按项目事实调整，不要盲目新增无用依赖。
 3. 运行 `pnpm exec vitest --help` 验证 CLI 能力，并确认目标 Vitest/Vite 版本支持模板中的 `projects`、`extends`、`fileParallelism`、`resolve.tsconfigPaths` 等字段；不支持时按当前版本的真实配置能力调整，不要照抄模板。
 4. 新增或更新 `vitest.config.ts`。推荐配置见同目录 `vitest-config.md`。
 5. 修改 `package.json` 脚本。推荐脚本见同目录 `package.md`。
@@ -208,6 +208,7 @@ Vitest 的 `vi.mock` 也有提升行为，但和 Jest 不是逐字节兼容。�
 - 根目录存在 `vitest.config.ts`，并使用 Vitest projects 区分：
   - `test` project：`src/**/*.spec.ts`、`src/**/*.integration-spec.ts`
   - `e2e` project：`test/**/*.e2e-spec.ts`
+- 如果 `vitest.config.ts` 使用 `unplugin-swc` 的 `configFile: "./.swcrc"`，根目录 `.swcrc` 已按同目录 `swcrc.md` 或项目事实同步。
 - 顶层 `test.include` 为 `[]`，避免重复收集测试文件。
 - `e2e` project 设置 `fileParallelism: false`。
 - coverage 排除 `src/**/*.spec.ts` 和 `src/**/*.integration-spec.ts`。
@@ -223,4 +224,4 @@ Vitest 的 `vi.mock` 也有提升行为，但和 Jest 不是逐字节兼容。�
 
 ## 模板文件
 
-配置模板见同目录 `vitest-config.md`，脚本模板见 `package.md`，验证命令见 `commands.md`，测试 API 迁移模板见 `vitest-api.md`，汇报模板见 `report.md`。
+配置模板见同目录 `vitest-config.md`，通用 SWC 配置模板见 `swcrc.md`，脚本模板见 `package.md`，验证命令见 `commands.md`，测试 API 迁移模板见 `vitest-api.md`，汇报模板见 `report.md`。

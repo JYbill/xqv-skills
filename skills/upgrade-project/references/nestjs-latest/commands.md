@@ -5,7 +5,7 @@ pnpm typecheck
 pnpm build
 ```
 
-如果本次影响了测试配置或测试依赖，再运行相关测试：
+如果本次影响了 SWC / Vitest / Vite 配置或测试依赖，再运行相关测试：
 
 ```bash
 pnpm exec vitest run path/to/file.spec.ts
