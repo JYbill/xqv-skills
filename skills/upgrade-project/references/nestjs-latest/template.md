@@ -161,7 +161,8 @@ COPY pnpm-workspace.yaml .
 COPY vendor vendor
 RUN pnpm install --frozen-lockfile && pnpm store prune
 COPY prisma.config.ts .
-COPY env env
+# 默认不复制 env；如 prisma:generate 确实需要 env，需同步调整 .dockerignore 并确认无敏感信息。
+# COPY env env
 COPY prisma prisma
 RUN pnpm prisma:generate
 COPY . .
@@ -175,8 +176,11 @@ RUN pnpm lint
 FROM install AS test
 RUN pnpm test
 
+FROM install AS test-cov
+RUN pnpm test:cov
+
 FROM scratch AS coverage-report
-COPY --from=test /app/coverage/ /
+COPY --from=test-cov /app/coverage/ /
 
 FROM install AS build
 RUN pnpm build
@@ -210,8 +214,9 @@ CMD ["pm2-runtime", "pm2.config.js"]
 
 - 模板文件名使用 `x86-debian.Dockerfile`。
 - `RUN npm pkg delete scripts.prepare` 保留，用于避免容器内安装依赖时触发本地 prepare 钩子。
-- `format`、`lint`、`test`、`coverage-report`、`build`、`production` 阶段按模板保留；删除某个阶段前先确认用户要求和项目事实。
-- 如果项目没有 `patches`、`vendor`、`prisma.config.ts`、`env`、`prisma` 或 `pm2.config.js`，迁移到其他项目时按真实目录调整，并在汇报中说明偏差。
+- `format`、`lint`、`test`、`test-cov`、`coverage-report`、`build`、`production` 阶段按模板保留；没有 `test:cov` 时不要保留 `test-cov` / `coverage-report`，删除其他阶段前先确认用户要求和项目事实。
+- 如果项目没有 `patches`、`vendor`、`prisma.config.ts`、`prisma`、`pm2.config.js` 或 `test:cov`，迁移到其他项目时按真实目录和脚本调整，并在汇报中说明偏差。
+- 默认不复制 `env`；如果 `prisma:generate` 确实依赖 `env` 目录，必须同步调整 `.dockerignore` 并确认不会把敏感信息带入镜像。
 - Docker 构建入口、镜像 tag、registry 推送仍读取 `references/docker-build/index.md`。
 
 ## 验证命令模板

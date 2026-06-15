@@ -88,13 +88,14 @@ env
 
 ```text
 install
-  ├─ format → lint
-  └─ test
-       └─ coverage-report
+  ├─ format → lint（由 docker-build.sh 顺序触发）
+  ├─ test
+  ├─ test-cov → coverage-report（需要导出覆盖率时使用）
+  └─ build
 production
 ```
 
-`format`、`lint`、`test` 任一失败时，不继续构建 `production`。`coverage-report` 用于从 `test` 阶段导出 `/app/coverage/`，不参与最终生产镜像。
+`format`、`lint`、`test` 任一失败时，不继续构建 `production`。`coverage-report` 用于从 `test-cov` 阶段导出 `/app/coverage/`，不参与默认生产镜像；如果项目没有 `test:cov` 脚本，不要保留这个可选 target。
 
 ## `x86-debian.Dockerfile` 模板
 
@@ -114,34 +115,47 @@ RUN npm install -g pnpm && npm cache clean -f
 # 安装层：先复制依赖清单以复用 Docker 缓存，再复制完整源码。
 FROM base AS install
 COPY package.json .
-COPY pnpm-workspace.yaml .
-COPY pnpm-lock.yaml .
-COPY patches patches
-COPY vendor ./vendor
-COPY .npmrc .
 RUN npm pkg delete scripts.prepare
+COPY .npmrc .
+COPY patches patches
+COPY pnpm-lock.yaml .
+COPY pnpm-workspace.yaml .
+COPY vendor vendor
 RUN pnpm --version
 RUN pnpm config list
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile && pnpm store prune
+# 如果项目使用 Prisma 且 build/test 需要生成客户端，按项目事实复制生成所需文件并运行 generate。
+# 不要默认复制 env；如必须复制，需要同步调整 .dockerignore 并确认不含敏感信息。
+# COPY prisma.config.ts .
+# COPY prisma prisma
+# RUN pnpm prisma:generate
 COPY . .
 
 # 格式化校验层：由 docker-build.sh 在 production 前置阶段触发。
 FROM install AS format
 RUN pnpm format
 
-# 代码检查层：依赖 format 层，保持 Docker 构建顺序清楚。
-FROM format AS lint
+# 代码检查层：由 docker-build.sh 在 format 之后触发；Dockerfile 自身不依赖 format 层，避免把格式化产物带入 lint。
+FROM install AS lint
 RUN pnpm lint
 
 # 测试层：只运行普通测试 project；e2e 依赖专门测试环境，不纳入镜像发布前置构建。
 FROM install AS test
 RUN pnpm test
 
-# 覆盖率报告层：用于从 test 阶段导出 coverage 产物。
-FROM scratch AS coverage-report
-COPY --from=test /app/coverage/ /
+# 覆盖率测试层：只在需要导出 coverage 时单独构建。
+FROM install AS test-cov
+RUN pnpm test:cov
 
-# 生产层：项目生产态通过 PM2 直接运行 TypeScript 入口。
+# 覆盖率报告层：用于从 test-cov 阶段导出 coverage 产物。
+FROM scratch AS coverage-report
+COPY --from=test-cov /app/coverage/ /
+
+# 构建层：产出 dist，供 production 阶段复制。
+FROM install AS build
+RUN pnpm build
+
+# 生产层：只安装生产依赖，并通过 PM2 运行编译产物。
 FROM --platform=linux/amd64 node:24.15.0-slim AS production
 WORKDIR /app
 RUN echo "deb http://mirrors.aliyun.com/debian/ bookworm main" > /etc/apt/sources.list && \
@@ -154,21 +168,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends bash vim ffmpeg
 ENV NODE_ENV=production
 RUN npm install -g pm2 pnpm && npm cache clean -f
 RUN pm2 install pm2-logrotate && pm2 set pm2-logrotate:max_size 200M && pm2 set pm2-logrotate:retain 7
-COPY package.json .
-COPY pnpm-workspace.yaml .
-COPY pnpm-lock.yaml .
-COPY patches patches
-COPY vendor ./vendor
-COPY .npmrc .
+COPY --from=build /app/package.json .
 RUN npm pkg delete scripts.prepare
+COPY --from=build /app/.npmrc .
+COPY --from=build /app/pnpm-lock.yaml .
+COPY --from=build /app/patches patches
+COPY --from=build /app/pnpm-workspace.yaml .
+COPY --from=build /app/vendor vendor
 RUN pnpm install --prod --frozen-lockfile && pnpm store prune
-COPY . .
+COPY --from=build /app/pm2.config.js .
+COPY --from=build /app/dist dist
 # 对 vim 编辑会读取该环境变量，从而使用 utf-8 而非兜底的 latin1 字符集。
 ENV LANG=C.utf8
 ENV LC_ALL=C.utf8
 
 EXPOSE 3000
-CMD ["pm2-runtime", "pm2.config.cjs"]
+CMD ["pm2-runtime", "pm2.config.js"]
 ```
 
 ## 汇报模板
@@ -179,8 +194,8 @@ CMD ["pm2-runtime", "pm2.config.cjs"]
 变更：
 - 明确 `x86-debian.Dockerfile` 是默认 Dockerfile。
 - 明确 `docker-build.sh -p x86-debian` 是统一构建与部署入口。
-- 记录 Docker 多阶段构建顺序：install → (format → lint) 与 test 并行 → production。
-- 记录 `coverage-report` 从 test 阶段导出 coverage 产物。
+- 记录 Docker 多阶段构建顺序：install → format/lint/test/test-cov/build → production。
+- 记录 `coverage-report` 从 test-cov 阶段导出 coverage 产物，且只在项目保留 `test:cov` 时使用。
 - 记录默认推送 registry 和 `-s` 导出 `images.tar` 的区别。
 - 增加 `.dockerignore` 模板，排除常见本地配置、缓存、文档、测试、agent/AI 工作目录和环境目录。
 

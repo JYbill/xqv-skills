@@ -136,7 +136,7 @@ test/debug/*.debug.ts        # 手动调试脚本，不纳入常规自动化测�
    - 测试文件是否按 `*.spec.ts`、`*.integration-spec.ts`、`test/**/*.e2e-spec.ts` 分层。
    - 当前工作区是否已有未提交改动。
 2. 安装 Vitest 相关依赖。NestJS / TypeScript 项目常见组合是 `vitest`、`vite`、`@vitest/coverage-v8`、`unplugin-swc`。如果项目不使用 SWC 或已有其他 Vite 转换方案，按项目事实调整，不要盲目新增无用依赖。
-3. 运行 `pnpm exec vitest --help` 验证 CLI 能力。
+3. 运行 `pnpm exec vitest --help` 验证 CLI 能力，并确认目标 Vitest/Vite 版本支持模板中的 `projects`、`extends`、`fileParallelism`、`resolve.tsconfigPaths` 等字段；不支持时按当前版本的真实配置能力调整，不要照抄模板。
 4. 新增或更新 `vitest.config.ts`。推荐配置见同目录 `template.md`。
 5. 修改 `package.json` 脚本。推荐脚本见同目录 `template.md`。
 6. 更新项目提示词或文档中的常用命令。编辑代码后优先运行本次修改相关的少量文件；需要验证单元测试和集成测试整组时运行 `pnpm test` 或 `pnpm test:cov`，需要 e2e 时单独运行 `--project e2e` 或项目已有独立入口。

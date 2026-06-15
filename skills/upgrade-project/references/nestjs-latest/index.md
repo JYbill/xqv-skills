@@ -179,7 +179,7 @@
 处理规则：
 
 - 默认文件名是 `x86-debian.Dockerfile`。
-- 保留多阶段结构：`base` → `install` → `format` / `lint` / `test` / `coverage-report` / `build` → `production`。
+- 保留多阶段结构：`base` → `install` → `format` / `lint` / `test` / `test-cov` / `coverage-report` / `build` → `production`。
 - 保留 `RUN npm pkg delete scripts.prepare`，避免容器安装依赖时触发本地 prepare 钩子。
 - 构建入口、镜像 tag、registry 推送和 `docker-build.sh` 细节仍属于 `references/docker-build/index.md`；不要把部署流程混进 NestJS latest 升级，除非用户同时要求。
 
