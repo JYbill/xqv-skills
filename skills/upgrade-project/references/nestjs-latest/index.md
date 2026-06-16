@@ -9,11 +9,12 @@
 - `package.json` 的 `start`、`start:prod`、`typecheck` 脚本；
 - `pm2.config.cjs` 的 Node.js 启动参数；
 - `.swcrc`、`@swc/core`、`@swc/cli`、`@swc/helpers`、`compilerOptions.builder.type: "swc"`、`swcrcPath`；
+- Prisma 7 `prisma-client`、`schema.prisma`、`importFileExtension`、`generatedFileExtension`，或 Docker / NestJS SWC 构建后生成的 Prisma Client 在 `dist` 中引用 `.ts` 后缀；
 - `x86-debian.Dockerfile`、NestJS latest 对应 Dockerfile 模板；
 - Vitest 项目中清理 `tsconfig-paths`；
 - 将一次 NestJS 升级经验沉淀成可复用流程。
 
-这份参考默认面向 TypeScript NestJS 服务端项目。默认只升级 NestJS 相关直接依赖、NestJS 构建配置（含 SWC builder / `.swcrc`）和本文件列出的运行脚本、类型检查、测试路径插件清理；Dockerfile 只在用户明确要求时按 `x86-debian.Dockerfile` 模板同步。不顺手迁移 lint、format、ESM 或业务代码。
+这份参考默认面向 TypeScript NestJS 服务端项目。默认只升级 NestJS 相关直接依赖、NestJS 构建配置（含 SWC builder / `.swcrc`）和本文件列出的运行脚本、类型检查、Prisma 7 `prisma-client` 生成器扩展配置、测试路径插件清理；Dockerfile 只在用户明确要求时按 `x86-debian.Dockerfile` 模板同步。不顺手迁移 lint、format、ESM 或业务代码。
 
 ## 迁移目标
 
@@ -26,17 +27,18 @@
 5. 确保 `package.json` 存在并使用精确的 `scripts.typecheck: "tsc --noEmit"`。
 6. 确保 `nest-cli.json` 的 `compilerOptions.deleteOutDir` 为 `true`。
 7. NestJS 项目使用 SWC builder 时，确保 `nest-cli.json` 通过 `swcrcPath: ".swcrc"` 指向根目录 `.swcrc`，并按 `swcrc.md` 同步 NestJS `.swcrc` 模板。
-8. 如果项目已经是 Vitest，移除 `tsconfig-paths` 直接依赖以及只服务于 Jest/ts-node 测试链路的残留引用。
-9. 更新锁文件，并运行项目已有验证命令。
-10. 如果用户明确要求同步 Dockerfile，以 `x86-debian.Dockerfile` 作为 NestJS 服务镜像模板。
+8. 如果项目使用 Prisma 7 的 `prisma-client` 生成器，并且生成的 TypeScript Client 会被 NestJS SWC / TypeScript 编译到 `dist`，确保 `schema.prisma` 的 `generator client` 显式设置 `moduleFormat = "esm"`、`generatedFileExtension = "ts"`、`importFileExtension = "js"`。
+9. 如果项目已经是 Vitest，移除 `tsconfig-paths` 直接依赖以及只服务于 Jest/ts-node 测试链路的残留引用。
+10. 更新锁文件，并运行项目已有验证命令。
+11. 如果用户明确要求同步 Dockerfile，以 `x86-debian.Dockerfile` 作为 NestJS 服务镜像模板。
 
-脚本模板见同目录 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，`nest-cli.json` 模板见 `nest-cli.md`，`.swcrc` 模板见 `swcrc.md`，`pm2.config.cjs` 模板见 `pm2.md`，依赖命令见 `dependencies.md`，清理示例见 `source-map-support.md` / `tsconfig-paths.md`，Dockerfile 模板见 `dockerfile.md`，验证命令见 `commands.md`，汇报模板见 `report.md`。
+脚本模板见同目录 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，`nest-cli.json` 模板见 `nest-cli.md`，`.swcrc` 模板见 `swcrc.md`，`pm2.config.cjs` 模板见 `pm2.md`，Prisma Client 生成器配置见 `prisma-client.md`，依赖命令见 `dependencies.md`，清理示例见 `source-map-support.md` / `tsconfig-paths.md`，Dockerfile 模板见 `dockerfile.md`，验证命令见 `commands.md`，汇报模板见 `report.md`。
 
 ## 默认迁移边界
 
 默认要做：
 
-- 检查 `package.json`、锁文件、`nest-cli.json`、`.swcrc`、NestJS 配置、测试框架配置和启动入口。
+- 检查 `package.json`、锁文件、`nest-cli.json`、`.swcrc`、NestJS 配置、Prisma schema / config、测试框架配置和启动入口。
 - 升级已经存在的 `@nestjs/*` 直接依赖，例如 `@nestjs/common`、`@nestjs/core`、`@nestjs/platform-*`、`@nestjs/config`、`@nestjs/swagger`、`@nestjs/testing`、`@nestjs/cli`、`@nestjs/schematics` 等。
 - 移除 `source-map-support`、`@types/source-map-support` 直接依赖，以及 `import "source-map-support/register"`、`require("source-map-support/register")`、`sourceMapSupport.install()` 等注册代码。
 - 修改所有直接用 `node` 运行编译产物的脚本，确保带 `--enable-source-maps`；默认包括 `scripts.start` 和 `scripts.start:prod`。
@@ -44,6 +46,7 @@
 - 修改 `scripts.typecheck` 到 `tsc --noEmit`。
 - 将 `nest-cli.json` 的 `compilerOptions.deleteOutDir` 设置为 `true`。
 - NestJS 项目使用 SWC builder 时，同步 `.swcrc`、`swcrcPath: ".swcrc"` 和 `@swc/helpers` 运行时依赖判断。
+- Prisma 7 项目使用 `prisma-client` 生成器并输出 TypeScript Client 时，同步 `schema.prisma` 的 ESM 与导入扩展配置。
 - Vitest 项目移除 `tsconfig-paths` 直接依赖。
 - 用户明确要求 Dockerfile 模板时，使用同目录 `dockerfile.md` 中的 `x86-debian.Dockerfile` 模板。
 
@@ -53,6 +56,7 @@
 - 不把 Jest 到 Vitest、CJS 到 ESM、ESLint 到 Oxlint、Prettier 到 Oxfmt 混入本次迁移；这些属于其他 references。
 - 不把通用 Vitest SWC 配置混入 NestJS latest；通用模板放在 `references/jest-vitest/swcrc.md`。
 - 不默认重写 Docker 构建或部署流程；只有用户明确要求 Dockerfile 模板时，才按 `x86-debian.Dockerfile` 模板同步。
+- 不修改 Prisma datasource、model、迁移文件或生成产物来掩盖生成器配置问题。
 - 不为了通过类型检查使用 `any`、`unknown`、`as any` 或 `as unknown as ...`。
 - 不修改业务逻辑来掩盖框架升级问题；先判断是否是依赖、类型或配置问题。
 
@@ -102,6 +106,12 @@
         └─ 未使用 SWC builder：不强行切换构建器，除非用户明确要求
         │
         ▼
+检查 Prisma 7 prisma-client generator
+        │
+        ├─ 使用并输出 TS Client：确保 schema.prisma 显式设置 ESM 与导入扩展
+        └─ 未使用 prisma-client：不处理 Prisma schema
+        │
+        ▼
 当前测试框架是否是 Vitest？
         │
         ├─ 是：移除 tsconfig-paths 直接依赖和 Jest/ts-node 测试残留引用
@@ -124,13 +134,14 @@
 以 pnpm 项目为例，其他包管理器按锁文件替换命令。
 
 1. 检查当前工作区是否有未提交改动，避免覆盖用户已有修改。
-2. 读取 `package.json`、`nest-cli.json`、`.swcrc` 和 `pm2.config.cjs`：
+2. 读取 `package.json`、锁文件、`nest-cli.json`、`.swcrc`、`pm2.config.cjs`、`prisma.config.ts` 和 `schema.prisma`：
    - `dependencies` / `devDependencies` 中的 `@nestjs/*`、`source-map-support`、`@types/source-map-support`、`tsconfig-paths`、`@swc/core`、`@swc/cli`、`@swc/helpers`；
    - `scripts.start`、`scripts.start:prod`、`scripts.typecheck`、`scripts.build`、`scripts.test`；
    - 所有直接使用 `node` 运行 `dist` 编译产物的脚本；
    - `pm2.config.cjs` 中启动编译产物的应用配置；
    - `compilerOptions.deleteOutDir`、`compilerOptions.builder` 和 `swcrcPath`；
    - `.swcrc` 的 NestJS 装饰器元数据配置、`module.type`、`module.ignoreDynamic`、`jsc.externalHelpers`；
+   - `schema.prisma` 的 `generator client` 是否使用 `provider = "prisma-client"`，以及是否设置 `moduleFormat`、`generatedFileExtension`、`importFileExtension`；
    - 是否有 `jest` 字段或测试相关脚本。
 3. 判断包管理器：优先按 `pnpm-lock.yaml`、`package-lock.json`、`yarn.lock`、`bun.lockb`。
 4. 升级已有 NestJS 直接依赖到 latest，保持 dependencies / devDependencies 分区，不随意新增不在项目中的 NestJS 包。
@@ -140,14 +151,15 @@
 8. 确保 `scripts.typecheck` 为 `tsc --noEmit`。如果已有但不一致，改到目标值并在汇报里说明原值。
 9. 确保 `nest-cli.json` 的 `compilerOptions.deleteOutDir` 为 `true`。
 10. 如果项目使用 SWC builder，确保 `nest-cli.json` 的 `compilerOptions.builder.type` 为 `"swc"`，`options.swcrcPath` 为 `".swcrc"`，并按 `swcrc.md` 同步根目录 `.swcrc`。如果 `.swcrc` 使用 `externalHelpers: true`，确认 `@swc/helpers` 运行时依赖可用。
-11. 判断当前项目是否是 Vitest：
+11. 如果项目使用 Prisma 7 的 `prisma-client` 生成器，并且生成的 TypeScript Client 会随 NestJS SWC / TypeScript 编译到 `dist`，按 `prisma-client.md` 同步 `schema.prisma` 的 `moduleFormat`、`generatedFileExtension`、`importFileExtension`，然后重新运行 `prisma generate`。
+12. 判断当前项目是否是 Vitest：
    - `package.json` 有 `vitest` 依赖或脚本；
    - 存在 `vitest.config.*`；
    - 测试代码从 `vitest` 导入 API。
-12. 如果是 Vitest，移除 `tsconfig-paths` 直接依赖，并清理只属于 Jest/ts-node 测试链路的引用。Vitest / Vite 的路径别名应使用项目已有的 `resolve.tsconfigPaths` 或 Vite 配置方式。
-13. 更新锁文件。
-14. 如果用户明确要求同步 Dockerfile，按 `dockerfile.md` 的 `x86-debian.Dockerfile` 模板更新项目 Dockerfile；不要把 registry、推送脚本或部署流程混入本阶段。
-15. 运行验证命令：优先 `typecheck`、`build`，再运行本次影响相关的测试。命令失败时，保留失败输出并判断是否属于本次迁移范围。
+13. 如果是 Vitest，移除 `tsconfig-paths` 直接依赖，并清理只属于 Jest/ts-node 测试链路的引用。Vitest / Vite 的路径别名应使用项目已有的 `resolve.tsconfigPaths` 或 Vite 配置方式。
+14. 更新锁文件。
+15. 如果用户明确要求同步 Dockerfile，按 `dockerfile.md` 的 `x86-debian.Dockerfile` 模板更新项目 Dockerfile；不要把 registry、推送脚本或部署流程混入本阶段。
+16. 运行验证命令：优先 `typecheck`、`build`，再运行本次影响相关的测试。命令失败时，保留失败输出并判断是否属于本次迁移范围。
 
 ## source-map-support 处理
 
@@ -213,6 +225,42 @@ NestJS 项目使用 SWC builder 时，`.swcrc` 需要保留 NestJS 装饰器和�
 - `.swcrc` 使用 `jsc.externalHelpers: true` 时，确认 `@swc/helpers` 在运行时可用。服务端项目通常放在 `dependencies`。
 - `module.type: "nodenext"` 适合 ESM / NodeNext 项目；迁移到非 NodeNext 项目时先读取 `tsconfig` 和 `package.json.type`，不要借 SWC 配置整理顺手做 ESM 迁移。
 
+## Prisma 7 prisma-client 生成器处理
+
+Prisma 7 的 `prisma-client` 生成器会把 TypeScript Client 输出到项目目录。NestJS SWC / TypeScript 再把这些文件编译到 `dist` 时，运行期只能加载编译后的 `.js` 文件。如果生成的 `client.ts` / `client.js` 中仍引用 `./internal/class.ts`、`./internal/prismaNamespace.ts`，Docker 镜像运行时可能报错：
+
+```text
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/app/dist/.../generate/internal/class.ts'
+```
+
+目标配置写在 `schema.prisma` 的 `generator client` 中，保留项目真实的 `output`：
+
+```prisma
+generator client {
+  provider               = "prisma-client"
+  output                 = "../../src/library/prisma/generate"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension    = "js"
+}
+```
+
+处理规则：
+
+- 只在项目使用 Prisma 7 `provider = "prisma-client"`，并且生成的 TS Client 会被编译到 `dist` 时处理。
+- 保留原有 `output`、`previewFeatures` 等已有字段，只补齐或修正 `moduleFormat`、`generatedFileExtension`、`importFileExtension`。
+- `moduleFormat` 对 ESM / NodeNext 项目应为 `"esm"`；不要顺手做 CJS/ESM 迁移。
+- `generatedFileExtension = "ts"` 表示生成源文件仍是 TypeScript；`importFileExtension = "js"` 表示源码里的相对 import 指向编译后的 `.js`，这是 Node ESM 运行期需要的后缀。
+- 不要手动编辑 `src/library/prisma/generate/` 生成产物，不要通过复制 `.ts` 文件到 `dist`、改 Dockerfile 或启动参数来掩盖这个配置问题。
+- 如果项目使用旧的 `prisma-client-js` 生成器，本规则不适用；不要把 `prisma-client` 选项硬加到旧生成器上。
+
+同步后运行项目已有生成命令，例如 `pnpm prisma:generate`，再运行 `pnpm build`。至少确认生成源文件或编译产物中 Prisma Client 的内部 import 使用 `.js` 后缀，例如：
+
+```text
+import * as $Class from "./internal/class.js"
+import * as Prisma from "./internal/prismaNamespace.js"
+```
+
 ## Vitest 项目的 tsconfig-paths 清理
 
 在这个迁移约定中，`tsconfig-paths` 视为 Jest/ts-node 测试链路的 tsconfig 路径插件。项目已经迁移到 Vitest 时，应移除该直接依赖。
@@ -251,6 +299,7 @@ NestJS 项目使用 SWC builder 时，`.swcrc` 需要保留 NestJS 装饰器和�
 - 默认文件名是 `x86-debian.Dockerfile`。
 - 不添加模板没有要求的 `ENV PRISMA_SKIP_POSTINSTALL_GENERATE=true`。
 - 不添加伪造的 `ARG DATABASE_URL=mysql://prisma:prisma@localhost:3306/prisma`；不要为了让 Prisma generate 通过而编造数据库连接串。
+- 如果 Docker / NestJS SWC 构建后的 Prisma Client 在 `dist` 中引用 `.ts` 后缀，根因通常是 `schema.prisma` 的 `prisma-client` 生成器缺少导入扩展配置；按 `prisma-client.md` 处理，不要手动修补生成产物。
 - 保留多阶段结构：`base` → `install` → `format` / `lint` / `test` / `coverage-report` / `build` → `production`。
 - `test` 阶段运行 `pnpm test:cov`；不要再新增单独的 `test-cov` 阶段。
 - `coverage-report` 从 `test` 阶段复制 `/app/coverage/`。
@@ -270,6 +319,7 @@ NestJS 项目使用 SWC builder 时，`.swcrc` 需要保留 NestJS 装饰器和�
 - `scripts.typecheck` 为 `tsc --noEmit`。
 - `nest-cli.json` 的 `compilerOptions.deleteOutDir` 为 `true`。
 - NestJS 项目使用 SWC builder 时，根目录 `.swcrc` 已按 `swcrc.md` 同步，`nest-cli.json` 通过 `swcrcPath: ".swcrc"` 指向它，并且 `module.ignoreDynamic` 为 `true`。
+- 如果项目使用 Prisma 7 `prisma-client` 生成器并输出 TS Client，`schema.prisma` 的 `generator client` 已显式设置 `moduleFormat = "esm"`、`generatedFileExtension = "ts"`、`importFileExtension = "js"`，重新生成和构建后 Prisma Client 内部 import 不再引用 `.ts` 后缀。
 - 如果项目是 Vitest，`package.json` 不再直接依赖 `tsconfig-paths`，也没有 Jest/ts-node 测试链路残留引用。
 - 锁文件已随包管理器命令更新。
 - 如果用户要求同步 Dockerfile，`x86-debian.Dockerfile` 已按模板更新：不含 `PRISMA_SKIP_POSTINSTALL_GENERATE` 和伪造的 `DATABASE_URL`，`test` 阶段运行 `pnpm test:cov`，`coverage-report` 从 `test` 阶段复制覆盖率产物，生产环境 ENV 连续放置。
@@ -278,4 +328,4 @@ NestJS 项目使用 SWC builder 时，`.swcrc` 需要保留 NestJS 装饰器和�
 
 ## 模板文件
 
-`package.json` 脚本模板见同目录 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，`nest-cli.json` 模板见 `nest-cli.md`，`.swcrc` 模板见 `swcrc.md`，`pm2.config.cjs` 模板见 `pm2.md`，依赖命令见 `dependencies.md`，source-map-support 清理示例见 `source-map-support.md`，tsconfig-paths 搜索模式见 `tsconfig-paths.md`，复杂判断表达模板见 `flow.md`，`x86-debian.Dockerfile` 模板见 `dockerfile.md`，验证命令见 `commands.md`，汇报模板见 `report.md`。
+`package.json` 脚本模板见同目录 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，`nest-cli.json` 模板见 `nest-cli.md`，`.swcrc` 模板见 `swcrc.md`，`pm2.config.cjs` 模板见 `pm2.md`，Prisma Client 生成器配置见 `prisma-client.md`，依赖命令见 `dependencies.md`，source-map-support 清理示例见 `source-map-support.md`，tsconfig-paths 搜索模式见 `tsconfig-paths.md`，复杂判断表达模板见 `flow.md`，`x86-debian.Dockerfile` 模板见 `dockerfile.md`，验证命令见 `commands.md`，汇报模板见 `report.md`。
