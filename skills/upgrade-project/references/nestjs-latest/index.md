@@ -22,7 +22,7 @@
 
 1. 将项目中已有的 NestJS 直接依赖升级到 latest，依赖分区保持原样。
 2. 移除 `source-map-support` 及其注册代码，改用 Node.js 原生 source map 能力。
-3. 将 `package.json` 中直接用 `node` 运行编译产物的脚本加上 `--enable-source-maps`，默认 `scripts.start` 和 `scripts.start:prod` 都使用 `node --enable-source-maps dist/src/main.js`。
+3. 将 `package.json` 中直接用 `node` 运行编译产物的脚本加上 `--enable-source-maps`，默认 `scripts.start` 和 `scripts.start:prod` 都使用 `node --enable-source-maps dist/main.js`。
 4. 确保 `pm2.config.cjs` 中启动编译产物的应用配置包含 `node_args: "--enable-source-maps"`。
 5. 确保 `package.json` 存在并使用精确的 `scripts.typecheck: "tsc --noEmit"`。
 6. 确保 `nest-cli.json` 的 `compilerOptions.deleteOutDir` 为 `true`。
@@ -45,6 +45,7 @@
 - 同步 `pm2.config.cjs` 的 `node_args: "--enable-source-maps"`。
 - 修改 `scripts.typecheck` 到 `tsc --noEmit`。
 - 将 `nest-cli.json` 的 `compilerOptions.deleteOutDir` 设置为 `true`。
+- NestJS latest 的 `tsconfig.json` 模板不写 `compilerOptions.rootDir`；默认让 SWC 输出 `dist/main.js`，避免模板无意切换产物结构。
 - NestJS 项目使用 SWC builder 时，同步 `.swcrc`、`swcrcPath: ".swcrc"` 和 `@swc/helpers` 运行时依赖判断。
 - Prisma 7 项目使用 `prisma-client` 生成器并输出 TypeScript Client 时，同步 `schema.prisma` 的 ESM 与导入扩展配置。
 - Vitest 项目移除 `tsconfig-paths` 直接依赖。
@@ -55,6 +56,7 @@
 - 不新增项目原本没有的 NestJS 扩展包，除非最新 NestJS peer dependency 或用户需求明确要求。
 - 不把 Jest 到 Vitest、CJS 到 ESM、ESLint 到 Oxlint、Prettier 到 Oxfmt 混入本次迁移；这些属于其他 references。
 - 不把通用 Vitest SWC 配置混入 NestJS latest；通用模板放在 `references/jest-vitest/swcrc.md`。
+- 不为了得到 `dist/src/main.js` 在 `tsconfig.json` 模板里新增 `rootDir`；只有项目既有构建入口明确依赖该结构时，才按项目事实保留并同步启动脚本。
 - 不默认重写 Docker 构建或部署流程；只有用户明确要求 Dockerfile 模板时，才按 `x86-debian.Dockerfile` 模板同步。
 - 不修改 Prisma datasource、model、迁移文件或生成产物来掩盖生成器配置问题。
 - 不为了通过类型检查使用 `any`、`unknown`、`as any` 或 `as unknown as ...`。
@@ -139,14 +141,14 @@
    - `scripts.start`、`scripts.start:prod`、`scripts.typecheck`、`scripts.build`、`scripts.test`；
    - 所有直接使用 `node` 运行 `dist` 编译产物的脚本；
    - `pm2.config.cjs` 中启动编译产物的应用配置；
-   - `compilerOptions.deleteOutDir`、`compilerOptions.builder` 和 `swcrcPath`；
+   - `compilerOptions.deleteOutDir`、`compilerOptions.builder`、`swcrcPath`、`compilerOptions.rootDir`；
    - `.swcrc` 的 NestJS 装饰器元数据配置、`module.type`、`module.ignoreDynamic`、`jsc.externalHelpers`；
    - `schema.prisma` 的 `generator client` 是否使用 `provider = "prisma-client"`，以及是否设置 `moduleFormat`、`generatedFileExtension`、`importFileExtension`；
    - 是否有 `jest` 字段或测试相关脚本。
 3. 判断包管理器：优先按 `pnpm-lock.yaml`、`package-lock.json`、`yarn.lock`、`bun.lockb`。
 4. 升级已有 NestJS 直接依赖到 latest，保持 dependencies / devDependencies 分区，不随意新增不在项目中的 NestJS 包。
 5. 移除 `source-map-support` 直接依赖和注册代码。
-6. 将所有直接使用 `node` 运行 `dist` 编译产物的脚本加上 `--enable-source-maps`；默认 `scripts.start` 和 `scripts.start:prod` 都使用 `node --enable-source-maps dist/src/main.js`。
+6. 将所有直接使用 `node` 运行 `dist` 编译产物的脚本加上 `--enable-source-maps`；默认 `scripts.start` 和 `scripts.start:prod` 都使用 `node --enable-source-maps dist/main.js`。
 7. 如果存在 `pm2.config.cjs` 且应用通过 PM2 启动编译产物，确保对应应用配置包含 `node_args: "--enable-source-maps"`。
 8. 确保 `scripts.typecheck` 为 `tsc --noEmit`。如果已有但不一致，改到目标值并在汇报里说明原值。
 9. 确保 `nest-cli.json` 的 `compilerOptions.deleteOutDir` 为 `true`。
@@ -170,9 +172,9 @@
 - 删除 `source-map-support` 和 `@types/source-map-support` 直接依赖。
 - 删除源码中的 `source-map-support/register` 注册和 `sourceMapSupport.install()`。
 - 将 `package.json` 中所有直接使用 `node` 运行 `dist` 编译产物的脚本加上 `--enable-source-maps`。
-- 默认 `scripts.start` 和 `scripts.start:prod` 都设置为 `node --enable-source-maps dist/src/main.js`。
+- 默认 `scripts.start` 和 `scripts.start:prod` 都设置为 `node --enable-source-maps dist/main.js`。
 - 如果存在 `pm2.config.cjs` 且应用通过 PM2 启动编译产物，同步加入 `node_args: "--enable-source-maps"`。
-- 如果项目的构建输出入口不是 `dist/src/main.js`，先核对实际 NestJS 构建配置；没有明确证据时按本迁移目标设置，并在汇报里说明。
+- 如果项目的构建输出入口不是 `dist/main.js`，先核对实际 NestJS 构建配置；没有明确证据时按本迁移目标设置，并在汇报里说明。
 
 ## typecheck 脚本处理
 
@@ -211,6 +213,18 @@ NestJS latest 模板要求构建前清理旧输出目录，避免历史 dist 文
 - `deleteOutDir` 已是 `true`：保留。
 - `deleteOutDir` 为 `false` 或缺失：改为 `true`。
 - 处理 `deleteOutDir` 时不顺手重排 `nest-cli.json`，也不改 assets / sourceRoot；SWC builder 只按下一节规则处理。
+
+## tsconfig rootDir 处理
+
+NestJS latest 的 `tsconfig.json` 模板不要写 `compilerOptions.rootDir`。在 Nest CLI 的 SWC 构建链路中，`rootDir` 是否存在会影响 `@swc/cli` 的 `stripLeadingPaths`，从而改变产物路径结构：不写 `rootDir` 时标准 `sourceRoot: "src"` 通常输出 `dist/main.js`，写 `rootDir: "."` 时通常输出 `dist/src/main.js`。
+
+处理规则：
+
+- 新建或同步模板时，不新增 `rootDir`。
+- 默认启动入口按无 `rootDir` 的产物结构写为 `dist/main.js`。
+- 如果项目既有 `rootDir` 且启动脚本、PM2、Docker 已明确依赖 `dist/src/main.js`，先按项目事实保留；不要为了套模板静默删除后留下坏启动脚本。
+- 如果决定删除既有 `rootDir`，必须同步所有启动入口和构建产物引用，并在汇报中说明产物路径从 `dist/src/main.js` 变为 `dist/main.js`。
+- 详细行为记录见 `~/Documents/xiaoqinvar知识文档/wiki/dev/tech/js-runtime/nestjs/cli/swc-tsconfig-build.md`。
 
 ## NestJS SWC 配置处理
 
@@ -314,10 +328,11 @@ import * as Prisma from "./internal/prismaNamespace.js"
 - 已有 `@nestjs/*` 直接依赖已升级到 latest，依赖分区未被无故改变。
 - `package.json` 不再直接依赖 `source-map-support` 和 `@types/source-map-support`。
 - 源码不再注册 `source-map-support`。
-- `package.json` 中直接使用 `node` 运行 `dist` 编译产物的脚本都包含 `--enable-source-maps`，默认 `scripts.start` 和 `scripts.start:prod` 为 `node --enable-source-maps dist/src/main.js`。
+- `package.json` 中直接使用 `node` 运行 `dist` 编译产物的脚本都包含 `--enable-source-maps`，默认 `scripts.start` 和 `scripts.start:prod` 为 `node --enable-source-maps dist/main.js`。
 - 如果存在 `pm2.config.cjs` 且通过 PM2 启动编译产物，应用配置包含 `node_args: "--enable-source-maps"`。
 - `scripts.typecheck` 为 `tsc --noEmit`。
 - `nest-cli.json` 的 `compilerOptions.deleteOutDir` 为 `true`。
+- NestJS latest `tsconfig.json` 模板没有新增 `compilerOptions.rootDir`；启动入口与实际产物路径一致。
 - NestJS 项目使用 SWC builder 时，根目录 `.swcrc` 已按 `swcrc.md` 同步，`nest-cli.json` 通过 `swcrcPath: ".swcrc"` 指向它，并且 `module.ignoreDynamic` 为 `true`。
 - 如果项目使用 Prisma 7 `prisma-client` 生成器并输出 TS Client，`schema.prisma` 的 `generator client` 已显式设置 `moduleFormat = "esm"`、`generatedFileExtension = "ts"`、`importFileExtension = "js"`，重新生成和构建后 Prisma Client 内部 import 不再引用 `.ts` 后缀。
 - 如果项目是 Vitest，`package.json` 不再直接依赖 `tsconfig-paths`，也没有 Jest/ts-node 测试链路残留引用。
