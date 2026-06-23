@@ -16,8 +16,9 @@
 
 默认只做测试框架替换：
 
-- 新增 Vitest 及项目需要的转换、覆盖率依赖。
-- 新增或更新 `vitest.config.ts`。
+- 新增 Vitest、Vite 和项目需要的覆盖率依赖；默认不要把 SWC 当作 TS 编译底座引入。
+- 新增或更新 `vitest.config.ts`，并在根级显式配置 `oxc.target`。
+- `oxc.target` 必须结合 `package.json` 的 `engines.node` 选择；如果项目没有声明 Node 版本，使用当前 Vite/OXC 支持的最高 `nodeXX` target，并通过 Vitest 验证。
 - 将现有测试脚本迁移到 Vitest，并将 `package.json` 的 `test` / `test:watch` / `test:cov` 固定到 `test` project；e2e 仍使用独立 project 或项目已有独立入口。
 - 删除 Jest 配置文件、`package.json` 的 `jest` 配置字段和 Jest 相关直接依赖。
 - 将测试代码里的 Jest API 改为 Vitest API。
@@ -85,7 +86,7 @@ test/debug/*.debug.ts        # 手动调试脚本，不纳入常规自动化测�
 - 顶层 `test.include` 设置为 `[]`，避免 root suite 和 project suite 重复收集测试文件。
 - 覆盖率排除测试文件本身，例如 `src/**/*.spec.ts`、`src/**/*.integration-spec.ts`。
 
-配置模板见同目录 `vitest-config.md`，通用 SWC 配置模板见 `swcrc.md`，脚本模板见 `package.md`，验证命令见 `commands.md`，测试 API 迁移模板见 `vitest-api.md`，汇报模板见 `report.md`。
+配置模板见同目录 `vitest-config.md`，脚本模板见 `package.md`，验证命令见 `commands.md`，测试 API 迁移模板见 `vitest-api.md`，汇报模板见 `report.md`。如项目确实需要 SWC fallback，参考同目录 `swcrc.md`，但不要作为默认 TS 编译底座。
 
 ## 推荐执行流程
 
@@ -101,13 +102,13 @@ test/debug/*.debug.ts        # 手动调试脚本，不纳入常规自动化测�
 按 AGENTS.md 测试要求确认 spec / integration-spec / e2e 的位置和语义
         │
         ▼
-安装 Vitest 及必要转换、覆盖率依赖
+安装 Vitest、Vite 及覆盖率依赖
         │
         ▼
 运行 `pnpm exec vitest --help`，确认 CLI 参数
         │
         ▼
-新增或更新 `vitest.config.ts`，配置 `test` / `e2e` projects
+新增或更新 `vitest.config.ts`，配置根级 `oxc.target` 与 `test` / `e2e` projects
         │
         ▼
 替换 package scripts、lint-staged、CI 中的 Jest 命令
@@ -129,14 +130,15 @@ test/debug/*.debug.ts        # 手动调试脚本，不纳入常规自动化测�
 
 1. 检查当前项目状态：
    - `package.json` 的 `scripts.test`、`test:watch`、`test:cov` 是否使用目标 Vitest 命令，以及是否还有旧的 `test:e2e` 或 Jest 命令需要迁移。
+   - `package.json` 的 `engines.node`；存在时用它选择 `oxc.target`，例如 `>=24.14.0` 对应 `node24`。不存在时使用当前 Vite/OXC 支持的最高 `nodeXX` target，并通过 Vitest 验证。
    - `package.json` 的 `lint-staged` 字段、`.lintstagedrc*`、`lint-staged.config.*`；如果需要保留或迁移独立配置文件，目标文件名统一为 `lint-staged.config.js`；husky hook、CI 文件中是否直接调用 Jest。
    - `devDependencies` 中的 Jest 相关依赖。
    - `jest.config.*`、`test/jest-e2e.json`、`package.json` 的 `jest` 字段。
    - 如果 Jest 配置写在 `package.json` 中，先读取其中的 `testMatch` / `testRegex`、`testEnvironment`、`moduleNameMapper`、`setupFiles` / `setupFilesAfterEnv`、`collectCoverageFrom`、`coverageDirectory`、`coveragePathIgnorePatterns`、`testPathIgnorePatterns` 等语义，再迁移到 `vitest.config.ts`，不要只删除字段。
    - 测试文件是否按 `*.spec.ts`、`*.integration-spec.ts`、`test/**/*.e2e-spec.ts` 分层。
    - 当前工作区是否已有未提交改动。
-2. 安装 Vitest 相关依赖。NestJS / TypeScript 项目常见组合是 `vitest`、`vite`、`@vitest/coverage-v8`、`unplugin-swc`。如果 `vitest.config.ts` 使用 `unplugin-swc` 并通过 `configFile: "./.swcrc"` 读取配置，通用 `.swcrc` 模板见同目录 `swcrc.md`。如果项目不使用 SWC 或已有其他 Vite 转换方案，按项目事实调整，不要盲目新增无用依赖。
-3. 运行 `pnpm exec vitest --help` 验证 CLI 能力，并确认目标 Vitest/Vite 版本支持模板中的 `projects`、`extends`、`fileParallelism`、`resolve.tsconfigPaths` 等字段；不支持时按当前版本的真实配置能力调整，不要照抄模板。
+2. 安装 Vitest 相关依赖。常见组合是 `vitest`、`vite`、`@vitest/coverage-v8`。默认不要引入 `unplugin-swc` 作为 TS 编译底座；Vitest 4.1 + Vite 8 的 JS/TS transform 应显式走 OXC。只有项目确实依赖 OXC 当前不支持的装饰器降级或装饰器元数据时，才按项目事实增加 Babel / SWC workaround，并记录偏离原因。
+3. 运行 `pnpm exec vitest --help` 验证 CLI 能力，并确认目标 Vitest/Vite 版本支持模板中的 `projects`、`extends`、`fileParallelism`、`resolve.tsconfigPaths`、根级 `oxc` 等字段；不支持时按当前版本的真实配置能力调整，不要照抄模板。
 4. 新增或更新 `vitest.config.ts`。推荐配置见同目录 `vitest-config.md`。
 5. 修改 `package.json` 脚本。推荐脚本见同目录 `package.md`。
 6. 更新项目提示词或文档中的常用命令。编辑代码后优先运行本次修改相关的少量文件；需要验证单元测试和集成测试整组时运行 `pnpm test` 或 `pnpm test:cov`，需要 e2e 时单独运行 `--project e2e` 或项目已有独立入口。
@@ -150,7 +152,18 @@ test/debug/*.debug.ts        # 手动调试脚本，不纳入常规自动化测�
 
 ## 常见问题处理
 
-### 1. `package.json` 中存在 `jest` 配置字段
+### 1. `oxc.target` 选择错误或没有显式设置
+
+Vitest 4.1 + Vite 8 下，TS/JS transform 应显式走 OXC。处理顺序：
+
+1. 在 `vitest.config.ts` 根级配置 `oxc`，不要写到 `test` 下。
+2. 读取 `package.json.engines.node`，按 Node 主版本选择 target，例如 `>=24.14.0` → `node24`。
+3. 如果没有 `engines.node`，使用当前 Vite/OXC 支持的最高 `nodeXX` target，并运行 Vitest 验证配置可用。
+4. 不要用 `nodenext` 作为 `oxc.target`；它是 TypeScript 模块解析语义。
+5. 不要把 Node 后端项目默认设为 `esnext`。`nodeXX` 已经表示尽量保留该 Node 版本支持的 ECMAScript 语法。
+6. 不要写 `oxc: false`，除非项目明确采用其他 transformer 且已说明偏离原因。
+
+### 2. `package.json` 中存在 `jest` 配置字段
 
 `package.json` 的 `jest` 字段等同于 Jest 配置文件，迁移时不能只检查 `jest.config.*`。处理顺序：
 
@@ -163,38 +176,38 @@ test/debug/*.debug.ts        # 手动调试脚本，不纳入常规自动化测�
    - `collectCoverageFrom`、`coverageDirectory`、`coveragePathIgnorePatterns` → `coverage.include`、`coverage.reportsDirectory`、`coverage.exclude`。
 3. 迁移完成后删除 `package.json` 的 `jest` 字段，避免后续误判项目仍使用 Jest。
 
-### 2. `*.integration-spec.ts` 没有被执行
+### 3. `*.integration-spec.ts` 没有被执行
 
 如果只配置了 `src/**/*.spec.ts`，通常会漏掉集成测试。使用 project 时应放在 `test` project 中。这属于项目测试分层要求，不是额外扩大测试范围。
 
-### 3. e2e 并发导致共享资源冲突
+### 4. e2e 并发导致共享资源冲突
 
 e2e 测试通过 HTTP 接口测试完整链路，常会共用应用实例、测试数据库或端口。优先在 `e2e` project 中关闭文件级并行，不要把这个设置扩大到所有普通单元测试，除非普通测试也确实存在共享资源问题。
 
-### 4. 顶层 include 导致测试重复运行
+### 5. 顶层 include 导致测试重复运行
 
 使用 Vitest projects 后，顶层 `test.include` 可以设置为 `[]`，让测试文件只由 project 收集。否则 root suite 和 project suite 可能重复匹配同一批测试文件。
 
-### 5. 覆盖率把测试文件算进 src 覆盖范围
+### 6. 覆盖率把测试文件算进 src 覆盖范围
 
 覆盖率通常只看源码，不看测试文件本身。配置 coverage 时排除 `src/**/*.spec.ts` 和 `src/**/*.integration-spec.ts`。
 
-### 6. Jest 全局类型消失后报错
+### 7. Jest 全局类型消失后报错
 
 如果使用 `globals: false`，测试文件需要显式从 `vitest` 导入测试 API。不要为了让旧 Jest 全局类型继续存在而保留 `@types/jest`。
 
-### 7. mock 提升语义差异
+### 8. mock 提升语义差异
 
 Vitest 的 `vi.mock` 也有提升行为，但和 Jest 不是逐字节兼容。遇到模块 mock 失败时，优先按 Vitest 的 hoisted mock 写法调整测试，不要改业务代码绕过测试。
 
-### 8. 集成测试不应 mock 外部依赖
+### 9. 集成测试不应 mock 外部依赖
 
 `*.integration-spec.ts` 的目标是验证真实数据库、Redis、网络请求等集成点。迁移时如果原测试靠 Jest mock 外部依赖，先判断它本质上是不是单元测试：
 
 - 如果是单元测试，改名或留在 `*.spec.ts`，继续用 `vi.mock`。
 - 如果是集成测试，移除 mock，改用环境变量和真实只读数据，并确保不会污染共享环境。
 
-### 9. e2e 需要测试数据库和 seed
+### 10. e2e 需要测试数据库和 seed
 
 `test/**/*.e2e-spec.ts` 应通过 HTTP 测完整链路。没有专门测试库、schema、seed 和清理策略时，不要新增会写入共享环境的 e2e 用例。迁移现有 e2e 时只保证运行器切换和资源关闭正确。
 
@@ -205,10 +218,14 @@ Vitest 的 `vi.mock` 也有提升行为，但和 Jest 不是逐字节兼容。�
 - `package.json` 的测试脚本使用 Vitest，并包含以下三个命令：`"test": "vitest run --project test --passWithNoTests"`、`"test:watch": "vitest --project test"`、`"test:cov": "vitest run --coverage --project test --passWithNoTests"`。
 - `devDependencies` 中包含 `vitest`，覆盖率脚本需要时包含 `@vitest/coverage-v8`。
 - `devDependencies` 中不再包含 Jest 相关直接依赖。
-- 根目录存在 `vitest.config.ts`，并使用 Vitest projects 区分：
+- 根目录存在 `vitest.config.ts`，且在根级显式配置 `oxc.target`：
+  - 如果 `package.json.engines.node` 存在，target 与 Node 主版本对齐，例如 `>=24.14.0` → `node24`。
+  - 如果项目没有声明 Node 版本，使用当前 Vite/OXC 支持的最高 `nodeXX` target，并已通过 Vitest 验证。
+  - 没有使用 `nodenext`、`esnext` 或 `oxc: false` 作为默认迁移结果。
+- `vitest.config.ts` 使用 Vitest projects 区分：
   - `test` project：`src/**/*.spec.ts`、`src/**/*.integration-spec.ts`
   - `e2e` project：`src/**/*.spec.ts`、`src/**/*.integration-spec.ts`、`test/**/*.e2e-spec.ts`
-- 如果 `vitest.config.ts` 使用 `unplugin-swc` 的 `configFile: "./.swcrc"`，根目录 `.swcrc` 已按同目录 `swcrc.md` 或项目事实同步。
+- 如果项目为了装饰器降级或装饰器元数据显式使用 Babel / SWC workaround，已说明原因；否则没有默认引入 SWC 替代 OXC。
 - 顶层 `test.include` 为 `[]`，避免重复收集测试文件。
 - `e2e` project 设置 `fileParallelism: false`。
 - coverage 排除 `src/**/*.spec.ts` 和 `src/**/*.integration-spec.ts`。
@@ -224,4 +241,4 @@ Vitest 的 `vi.mock` 也有提升行为，但和 Jest 不是逐字节兼容。�
 
 ## 模板文件
 
-配置模板见同目录 `vitest-config.md`，通用 SWC 配置模板见 `swcrc.md`，脚本模板见 `package.md`，验证命令见 `commands.md`，测试 API 迁移模板见 `vitest-api.md`，汇报模板见 `report.md`。
+配置模板见同目录 `vitest-config.md`，脚本模板见 `package.md`，验证命令见 `commands.md`，测试 API 迁移模板见 `vitest-api.md`，汇报模板见 `report.md`。如项目确实需要 SWC fallback，参考同目录 `swcrc.md`，但不要作为默认 TS 编译底座。
