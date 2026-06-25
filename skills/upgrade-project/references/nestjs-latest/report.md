@@ -11,7 +11,7 @@
 - NestJS SWC builder 已通过 `swcrcPath: ".swcrc"` 指向根目录 `.swcrc`，`.swcrc` 已保留装饰器元数据并设置 `module.ignoreDynamic: true`。
 - 如项目使用 Prisma 7 `prisma-client` 生成器，`schema.prisma` 的 `generator client` 已显式设置 `moduleFormat = "esm"`、`generatedFileExtension = "ts"`、`importFileExtension = "js"`，避免编译后 Prisma Client 在 `dist` 中继续引用 `.ts` 后缀。
 - 当前项目使用 Vitest，已移除 `tsconfig-paths` 直接依赖及相关旧测试链路残留。
-- 如用户要求同步 Dockerfile，`x86-debian.Dockerfile` 已按模板更新；如未要求，说明未处理 Dockerfile。
+- 如用户要求同步 Dockerfile，`x86-debian.Dockerfile` 已按模板更新：Debian apt 源不写死版本，`production` 继承 `base` 并复用全局 `pnpm`；如未要求，说明未处理 Dockerfile。
 
 验证：
 - 已运行 `<实际类型检查命令>`：<结果>。

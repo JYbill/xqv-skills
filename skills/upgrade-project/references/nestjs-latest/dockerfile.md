@@ -1,8 +1,9 @@
-FROM --platform=linux/amd64 node:26-slim AS base
+FROM --platform=linux/amd64 node:26.3-slim AS base
 WORKDIR /app
-RUN echo "deb http://mirrors.aliyun.com/debian/ bookworm main" > /etc/apt/sources.list && \
-  echo "deb http://mirrors.aliyun.com/debian/ bookworm-updates main" >> /etc/apt/sources.list && \
-  echo "deb http://mirrors.aliyun.com/debian-security/ bookworm-security main" >> /etc/apt/sources.list && \
+RUN . /etc/os-release && \
+  echo "deb http://mirrors.aliyun.com/debian/ ${VERSION_CODENAME} main" > /etc/apt/sources.list && \
+  echo "deb http://mirrors.aliyun.com/debian/ ${VERSION_CODENAME}-updates main" >> /etc/apt/sources.list && \
+  echo "deb http://mirrors.aliyun.com/debian-security/ ${VERSION_CODENAME}-security main" >> /etc/apt/sources.list && \
   rm -rf /etc/apt/sources.list.d/*
 RUN apt-get update && \
   apt-get install -y --no-install-recommends openssl build-essential python3 && \
@@ -41,22 +42,18 @@ COPY --from=test /app/coverage/ /
 FROM install AS build
 RUN pnpm build
 
-FROM --platform=linux/amd64 node:26-slim AS production
+FROM base AS production
 WORKDIR /app
 ENV NODE_ENV=production
 ENV LANG=C.utf8
 ENV LC_ALL=C.utf8
-RUN echo "deb http://mirrors.aliyun.com/debian/ bookworm main" > /etc/apt/sources.list && \
-  echo "deb http://mirrors.aliyun.com/debian/ bookworm-updates main" >> /etc/apt/sources.list && \
-  echo "deb http://mirrors.aliyun.com/debian-security/ bookworm-security main" >> /etc/apt/sources.list && \
-  rm -rf /etc/apt/sources.list.d/*
 RUN apt-get update && \
-  apt-get install -y --no-install-recommends openssl build-essential python3 bash vim curl ffmpeg procps && \
+  apt-get install -y --no-install-recommends bash vim curl procps && \
   apt-get clean && \
   apt-get autoclean && \
   apt-get autoremove -y && \
   rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
-RUN npm install -g pm2 pnpm && npm cache clean -f
+RUN npm install -g pm2 && npm cache clean -f
 RUN pm2 install pm2-logrotate && \
   pm2 set pm2-logrotate:max_size 200M && \
   pm2 set pm2-logrotate:retain 7

@@ -104,10 +104,10 @@ docker build --progress=plain -f "${platform}.Dockerfile" --target production -t
 
 ### `base`
 
-- 基于项目真实运行需求选择基础镜像。模板中的 `node:26-slim` 只是示例；如果项目依赖 Puppeteer、Chromium、PM2 或特定系统库，必须按项目事实保留。
-- 可以配置 Debian 镜像源。
+- 基于项目真实运行需求选择基础镜像。模板中的 `node:26.3-slim` 只是示例；如果项目依赖 Puppeteer、Chromium、PM2 或特定系统库，必须按项目事实保留。
+- 可以配置 Debian 镜像源；不要写死 `bookworm`，应从 `/etc/os-release` 读取 `VERSION_CODENAME`，让 apt 源跟随当前基础镜像的 Debian 版本。
 - 可以安装项目构建和运行所需系统包。
-- 全局安装 `pnpm`。
+- 全局安装 `pnpm`，后续继承 `base` 的阶段应复用它。
 
 ### `install`
 
@@ -158,7 +158,9 @@ RUN pnpm build
 
 ### `production`
 
-- 只安装生产依赖：`pnpm install --prod --frozen-lockfile`。
+- `production` 默认使用 `FROM base AS production`，复用 `base` 中已配置的 Debian 镜像源、基础系统包和全局 `pnpm`，不要再新起同镜像导致重复配置。
+- 只安装生产阶段额外需要的系统包和生产依赖：`pnpm install --prod --frozen-lockfile`。
+- 生产阶段额外安装 PM2 时只安装 `pm2`，不要重复安装已由 `base` 提供的 `pnpm`。
 - 复制项目真实运行所需文件，例如 `pm2.config.cjs`、`dist`、`src`、`views`。
 - 如果 PM2 启动编译产物，`pm2.config.cjs` 中应包含 `node_args: "--enable-source-maps"`，保证线上日志映射到源码行号。
 - 暴露项目真实端口。
@@ -229,7 +231,7 @@ RUN pnpm build
 - `.dockerignore` 已按模板排除常见本地配置、缓存、文档、测试、agent/AI 工作目录、环境目录和构建无关文件。
 - `install` target 使用 `pnpm install --frozen-lockfile`。
 - `format`、`lint`、`test` target 仍调用项目统一脚本；当前模板的 `test` target 运行 `pnpm test:cov`，`coverage-report` 从 `test` 阶段复制覆盖率产物，不再使用单独的 `test-cov` target。
-- `production` target 只安装生产依赖，并通过项目实际启动命令启动。
+- `production` target 使用 `FROM base AS production`，复用 `base` 的 apt 源和全局 `pnpm`，只补装生产阶段额外系统包、只安装生产依赖，并通过项目实际启动命令启动。
 - 没有在新增文档中复制 registry 账号密码。
 - `bash -n docker-build.sh` 已通过。
 - 如果 Docker daemon 不可用，明确说明未运行完整 Docker build 的原因。

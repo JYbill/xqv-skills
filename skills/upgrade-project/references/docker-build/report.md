@@ -4,6 +4,8 @@
 - 明确 `x86-debian.Dockerfile` 是默认 Dockerfile。
 - 明确 `docker-build.sh -p x86-debian` 是统一构建与部署入口。
 - 记录 Docker 多阶段构建顺序：install → format/lint/test/build → production。
+- 记录 Debian apt 源从 `/etc/os-release` 读取 `VERSION_CODENAME`，避免写死 `bookworm`。
+- 记录 `production` 阶段 `FROM base AS production`，复用 `base` 的 apt 源、基础系统包和全局 `pnpm`。
 - 记录 `test` 阶段运行 `pnpm test:cov`，`coverage-report` 从 `test` 阶段导出 coverage 产物，不再使用单独的 `test-cov` 阶段。
 - 记录 production 阶段的 `NODE_ENV`、`LANG`、`LC_ALL` 连续放置。
 - 记录 PM2 启动编译产物时使用 `node_args: "--enable-source-maps"`。

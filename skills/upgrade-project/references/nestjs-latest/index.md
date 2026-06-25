@@ -307,7 +307,7 @@ import * as Prisma from "./internal/prismaNamespace.js"
 
 ## Dockerfile 模板处理
 
-当用户明确要求 NestJS latest reference 同步 Dockerfile 模板时，使用同目录 `dockerfile.md` 的 `x86-debian.Dockerfile` 模板。这个模板来自当前项目的 `x86-debian.Dockerfile`，用于 Node.js 26 / pnpm / NestJS 服务端项目。
+当用户明确要求 NestJS latest reference 同步 Dockerfile 模板时，使用同目录 `dockerfile.md` 的 `x86-debian.Dockerfile` 模板。这个模板来自当前项目的 `x86-debian.Dockerfile`，用于 Node.js 26.3 / pnpm / NestJS 服务端项目。
 
 处理规则：
 
@@ -316,6 +316,8 @@ import * as Prisma from "./internal/prismaNamespace.js"
 - 不添加伪造的 `ARG DATABASE_URL=mysql://prisma:prisma@localhost:3306/prisma`；不要为了让 Prisma generate 通过而编造数据库连接串。
 - 如果 Docker / NestJS SWC 构建后的 Prisma Client 在 `dist` 中引用 `.ts` 后缀，根因通常是 `schema.prisma` 的 `prisma-client` 生成器缺少导入扩展配置；按 `prisma-client.md` 处理，不要手动修补生成产物。
 - 保留多阶段结构：`base` → `install` → `format` / `lint` / `test` / `coverage-report` / `build` → `production`。
+- Debian 镜像源应从 `/etc/os-release` 读取 `VERSION_CODENAME`，不要写死 `bookworm`。
+- `production` 阶段使用 `FROM base AS production`，复用 `base` 的 apt 源、基础系统包和全局 `pnpm`，不要重复安装 `pnpm`。
 - `test` 阶段运行 `pnpm test:cov`；不要再新增单独的 `test-cov` 阶段。
 - `coverage-report` 从 `test` 阶段复制 `/app/coverage/`。
 - `production` 阶段的 `ENV NODE_ENV=production`、`ENV LANG=C.utf8`、`ENV LC_ALL=C.utf8` 放在一起。
@@ -338,7 +340,7 @@ import * as Prisma from "./internal/prismaNamespace.js"
 - 如果项目使用 Prisma 7 `prisma-client` 生成器并输出 TS Client，`schema.prisma` 的 `generator client` 已显式设置 `moduleFormat = "esm"`、`generatedFileExtension = "ts"`、`importFileExtension = "js"`，重新生成和构建后 Prisma Client 内部 import 不再引用 `.ts` 后缀。
 - 如果项目是 Vitest，`package.json` 不再直接依赖 `tsconfig-paths`，也没有 Jest/ts-node 测试链路残留引用。
 - 锁文件已随包管理器命令更新。
-- 如果用户要求同步 Dockerfile，`x86-debian.Dockerfile` 已按模板更新：不含 `PRISMA_SKIP_POSTINSTALL_GENERATE` 和伪造的 `DATABASE_URL`，`test` 阶段运行 `pnpm test:cov`，`coverage-report` 从 `test` 阶段复制覆盖率产物，生产环境 ENV 连续放置。
+- 如果用户要求同步 Dockerfile，`x86-debian.Dockerfile` 已按模板更新：不含 `PRISMA_SKIP_POSTINSTALL_GENERATE` 和伪造的 `DATABASE_URL`，Debian apt 源不写死版本、`production` 继承 `base` 并复用全局 `pnpm`，`test` 阶段运行 `pnpm test:cov`，`coverage-report` 从 `test` 阶段复制覆盖率产物，生产环境 ENV 连续放置。
 - 已运行 `typecheck`、`build` 和必要测试，或明确说明跳过原因 / 失败原因。
 - 未混入 lint、format、ESM、Docker 或业务逻辑重构等非本阶段改动。
 
