@@ -1,6 +1,6 @@
 ---
 name: react-ddt
-description: 审查并修正 React hook、React 组件和 TSX 文件里的职责放置错误；当用户要求按 util.ts、enum.ts、types.ts 拆分纯函数、静态常量和类型，或 review React 组件 / hook 结构时使用。
+description: 审查并修正 React hook、React 组件和 TSX 文件里的职责放置错误；当用户要求拆分纯函数、静态常量、按项目规范放置类型，或 review React 组件 / hook 结构时使用。
 ---
 
 # react-ddt
@@ -9,7 +9,7 @@ react-ddt 是 React dont-do-that packaging。
 
 这个 skill 专门约束 React 组件和 hook 里最容易反复出错的一类问题：把与 React state 无关的纯函数、静态常量和类型定义耦合在 `.tsx` 或 hook 主文件里，导致组件文件越来越重，review 时很难快速判断哪些是渲染逻辑，哪些只是普通计算逻辑。
 
-它和 `ddt` 不是互相替代关系。`ddt` 负责反对无收益的过度封装，`react-ddt` 负责把 React 文件里的非 React 职责放到固定文件。执行时要同时考虑两边规则：该抽离的纯函数要抽离，不该为了形式新增一堆薄包装。
+它和 `ddt` 不是互相替代关系。`ddt` 负责反对无收益的过度封装，`react-ddt` 负责把 React 文件里的非 React 职责放到项目约定位置。执行时要同时考虑两边规则：该抽离的纯函数要抽离，不该为了形式新增一堆薄包装。
 
 ## 规范读取要求
 
@@ -24,7 +24,8 @@ react-ddt 是 React dont-do-that packaging。
 - 要求 review React hook、React 组件、`.tsx` 文件结构
 - 指出纯函数不应该放在组件或 hook 主文件里
 - 要求把常量放到 `enum.ts`
-- 要求把类型放到 `types.ts`
+- 要求把类型移出组件或 hook 主文件，并按项目规范放置
+- 要求把类型放到 `types.ts`，或质疑类型不应一刀切放 `types.ts`
 - 要求把刚才改动的 TS / TSX 文件按目录职责复查
 - 组件文件里同时出现 UI、状态逻辑、纯计算、静态配置和类型定义
 - hook 主文件里出现与 hook state 无关的判断、构造、解析、比较函数
@@ -39,7 +40,7 @@ React hook 主文件只保留 hook 自身的 state、ref、memo、effect、callb
 
 如果存在静态常量，必须抽到当前目录下的 `enum.ts`。没有 `enum.ts` 就新建。这个规则适用于 UI 尺寸、间距、阈值、ID 前缀、正则、固定 key、状态码、静态 Set、静态 Map、固定 tool name 等不会随组件运行态变化的值。
 
-如果存在类型定义，必须抽到当前目录下的 `types.ts`。没有 `types.ts` 就新建。这个规则适用于组件 props、hook 参数、hook 返回值、局部业务类型、选择器状态、内部映射结构等。已经存在更合适的组件目录 `types.ts` 或模块级 `types.ts` 时，优先复用现有文件，不新增平行类型文件。
+如果存在类型定义，先判断它是否应该从 React 主文件中移出，再按项目类型规范和现有目录模式决定落点，不能一刀切新建或搬到当前目录 `types.ts`。这个规则适用于组件 props、hook 参数、hook 返回值、局部业务类型、选择器状态、内部映射结构等。只有项目没有明确类型放置要求，且同目录已有或适合承载局部类型时，才把同目录 `types.ts` 作为默认落点。
 
 `enum.ts` 在本项目里可以承载语义化 `const`、`Set`、正则和真正的 `enum`。不要为了文件名叫 enum 就把所有值强行改成 TypeScript `enum`。业务状态码、任务码、类型码这类语义明确的数字常量，才优先使用真正的 `enum` 或项目既有枚举模式。
 
@@ -73,9 +74,11 @@ React hook 主文件只保留 hook 自身的 state、ref、memo、effect、callb
 
 ## 判断类型应该放哪里
 
-React 组件 props 放该组件所在目录的 `types.ts`。如果目录已经有统一 `types.ts`，继续放进去。
+先读取项目规范、同目录既有文件和上层模块约定，再决定类型落点。类型剥离的目标是让 React 主文件更聚焦，不是强制制造 `types.ts`。
 
-React hook 的参数和返回值放 hook 所在目录的 `types.ts`。如果 hook 属于某个模块公共 hook 目录，可以放模块 hook 的统一 `types.ts`。
+如果项目规定组件 props、hook 参数或 hook 返回值放在组件目录 `types.ts`，就复用现有 `types.ts`；没有时再判断是否需要新建。若项目规定放在模块级 `types.ts`、`src/types/**`、feature 级类型文件、接口层类型文件，必须按项目规范走。
+
+如果项目惯例允许很小的局部 props 类型贴在组件文件内，且该类型没有复用价值、不会压重主流程，可以保留在组件文件内。不要为了“类型与逻辑剥离”把所有局部类型机械搬走。
 
 API 请求参数、响应 DTO 和数据库结构不要放 React 组件目录的 `types.ts`，要继续遵守项目 API 类型规范。
 
@@ -85,11 +88,11 @@ API 请求参数、响应 DTO 和数据库结构不要放 React 组件目录的 
 
 审查当前改动时，先列出所有被改到的 React hook、React 组件和 `.tsx` 文件，再按文件逐个检查。
 
-对每个文件先找顶层 `const`、`function`、`type`、`interface`。再判断它们是否属于 React 主流程。属于纯函数的移到 `util.ts`，属于静态常量的移到 `enum.ts`，属于类型的移到 `types.ts`。
+对每个文件先找顶层 `const`、`function`、`type`、`interface`。再判断它们是否属于 React 主流程。属于纯函数的移到 `util.ts`，属于静态常量的移到 `enum.ts`，属于类型的按项目类型规范移动；没有明确规范时，才考虑同目录 `types.ts`。
 
 移动后要更新 import。`import` 和 `import type` 不能从同一路径拆成重复导入，必须合并。类型导入使用 `import type`。
 
-移动后要检查循环引用。`util.ts` 可以 import `types.ts` 和 `enum.ts`，组件可以 import `util.ts`、`enum.ts`、`types.ts`。不要让 `types.ts` 反向 import 组件，也不要让 `enum.ts` import React 组件。
+移动后要检查循环引用。`util.ts` 可以 import 类型文件和 `enum.ts`，组件可以 import `util.ts`、`enum.ts` 和项目规定的类型文件。不要让类型文件反向 import 组件，也不要让 `enum.ts` import React 组件。
 
 移动后要检查注释。导出函数必须保留或补齐简短 JSDoc。复杂纯逻辑里的关键业务判断保留行内注释，不要删掉有价值的中文说明。
 
@@ -97,7 +100,7 @@ API 请求参数、响应 DTO 和数据库结构不要放 React 组件目录的 
 
 ## 和 ddt 的边界
 
-`react-ddt` 要把纯函数、常量、类型移出 React 主文件，但不鼓励新增没有收益的中间层。
+`react-ddt` 要把纯函数、常量，以及应该剥离的类型移出 React 主文件，但不鼓励新增没有收益的中间层。
 
 如果一段逻辑本来就是组件事件 handler 里的两三行 state 更新，不要抽到 util。
 
@@ -107,7 +110,7 @@ API 请求参数、响应 DTO 和数据库结构不要放 React 组件目录的 
 
 如果一个常量只用于解释复杂业务状态或跨多个文件复用，才给它更强的语义名称。不要把所有单次出现的字面量都搬到 `enum.ts`。
 
-拿不准时按这句话判断：React 文件里只留下 React 相关的阅读路径，普通计算逻辑去 util，固定配置去 enum，类型去 types；但单次使用的薄包装逻辑优先留在调用处。
+拿不准时按这句话判断：React 文件里只留下 React 相关的阅读路径，普通计算逻辑去 util，固定配置去 enum，类型按项目规范放置；但单次使用的薄包装逻辑和很小的局部类型优先留在最直接的位置。
 
 ## 反模式清单
 
@@ -117,8 +120,8 @@ API 请求参数、响应 DTO 和数据库结构不要放 React 组件目录的 
 - `ExampleList.tsx` 顶层定义 `buildInitialRange()`；它只根据入参构造默认范围，不读取组件 state、ref 或生命周期，应该放同级 `util.ts`
 - `useExampleSelection.ts` 里定义不读取 hook state 的 `isSameSelection()`
 - `util.ts` 里新增只被调用一次的 `normalizeSignInTemplateCourseId()`；函数体只是 `normalizePositiveFiniteNumber(courseId) ?? null`，应该内联到调用处
-- 组件文件里定义 `interface ExampleProps`，同目录已有 `types.ts`
-- hook 主文件里定义参数 interface，而同目录没有 `types.ts`
+- 组件文件里塞入很长的 props、映射结构或复用类型，而项目规范要求这类类型放到独立类型文件
+- hook 主文件里定义复杂参数 interface，而项目已有 hook 类型统一放置位置
 - TSX 里散落 `example-`、`item-` 这类 ID 前缀字符串
 - TSX 里散落用于浮层定位的宽度、高度、gap、padding 数字
 - util 里重复写和 enum 里同语义的固定字符串或数字
@@ -147,6 +150,8 @@ export function useExampleSelection(params: UseExampleSelectionParams) {
 ```
 
 更合适的放置方式：
+
+下面示例假设项目约定把当前 hook 的局部类型放在同目录 `types.ts`。真实项目要按其类型规范替换类型落点。
 
 ```ts
 // enum.ts
