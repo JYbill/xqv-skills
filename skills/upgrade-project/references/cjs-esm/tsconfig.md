@@ -1,5 +1,5 @@
 {
-  "compilerOptions": {
-    "verbatimModuleSyntax": true
-  }
+"compilerOptions": {
+"verbatimModuleSyntax": true
+}
 }

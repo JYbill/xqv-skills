@@ -1,5 +1,5 @@
 ```ts
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 ```
 
 常见替换：
@@ -15,7 +15,7 @@ NestJS e2e 应保留应用关闭逻辑：
 
 ```ts
 afterEach(async () => {
-  await app?.close();
-  app = undefined;
-});
+  await app?.close()
+  app = undefined
+})
 ```

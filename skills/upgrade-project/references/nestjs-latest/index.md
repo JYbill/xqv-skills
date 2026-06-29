@@ -155,9 +155,11 @@
 10. 如果项目使用 SWC builder，确保 `nest-cli.json` 的 `compilerOptions.builder.type` 为 `"swc"`，`options.swcrcPath` 为 `".swcrc"`，并按 `swcrc.md` 同步根目录 `.swcrc`。如果 `.swcrc` 使用 `externalHelpers: true`，确认 `@swc/helpers` 运行时依赖可用。
 11. 如果项目使用 Prisma 7 的 `prisma-client` 生成器，并且生成的 TypeScript Client 会随 NestJS SWC / TypeScript 编译到 `dist`，按 `prisma-client.md` 同步 `schema.prisma` 的 `moduleFormat`、`generatedFileExtension`、`importFileExtension`，然后重新运行 `prisma generate`。
 12. 判断当前项目是否是 Vitest：
-   - `package.json` 有 `vitest` 依赖或脚本；
-   - 存在 `vitest.config.*`；
-   - 测试代码从 `vitest` 导入 API。
+
+- `package.json` 有 `vitest` 依赖或脚本；
+- 存在 `vitest.config.*`；
+- 测试代码从 `vitest` 导入 API。
+
 13. 如果是 Vitest，移除 `tsconfig-paths` 直接依赖，并清理只属于 Jest/ts-node 测试链路的引用。Vitest / Vite 的路径别名应使用项目已有的 `resolve.tsconfigPaths` 或 Vite 配置方式。
 14. 更新锁文件。
 15. 如果用户明确要求同步 Dockerfile，按 `dockerfile.md` 的 `x86-debian.Dockerfile` 模板更新项目 Dockerfile；不要把 registry、推送脚本或部署流程混入本阶段。

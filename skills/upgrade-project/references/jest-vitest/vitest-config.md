@@ -1,50 +1,50 @@
 ```ts
-import { defineConfig } from "vitest/config";
+import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   // 显式启用 Vite 8 的 OXC transform；target 必须按 package.json 的 engines.node 选择。
   // 示例："node": ">=24.14.0" -> target: "node24"。
   // 如果项目没有声明 engines.node，使用当前 Vite/OXC 支持的最高 nodeXX target，并通过 Vitest 验证。
   oxc: {
-    target: "node24",
+    target: 'node24',
   },
   resolve: {
     tsconfigPaths: true,
   },
   test: {
-    environment: "node",
+    environment: 'node',
     globals: false,
     include: [],
     projects: [
       {
         extends: true,
         test: {
-          name: "test",
-          include: ["src/**/*.spec.ts", "src/**/*.integration-spec.ts"],
+          name: 'test',
+          include: ['src/**/*.spec.ts', 'src/**/*.integration-spec.ts'],
         },
       },
       {
         extends: true,
         test: {
-          name: "e2e",
-          include: ["src/**/*.spec.ts", "src/**/*.integration-spec.ts", "test/**/*.e2e-spec.ts"],
+          name: 'e2e',
+          include: ['src/**/*.spec.ts', 'src/**/*.integration-spec.ts', 'test/**/*.e2e-spec.ts'],
           fileParallelism: false,
         },
       },
     ],
     coverage: {
-      provider: "v8",
-      reportsDirectory: "coverage",
-      include: ["src/**/*.ts"],
+      provider: 'v8',
+      reportsDirectory: 'coverage',
+      include: ['src/**/*.ts'],
       exclude: [
-        "src/**/*.d.ts",
-        "src/**/*.spec.ts",
-        "src/**/*.integration-spec.ts",
-        "src/library/prisma/generate/**",
+        'src/**/*.d.ts',
+        'src/**/*.spec.ts',
+        'src/**/*.integration-spec.ts',
+        'src/library/prisma/generate/**',
       ],
     },
   },
-});
+})
 ```
 
 说明：

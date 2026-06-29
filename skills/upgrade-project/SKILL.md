@@ -80,6 +80,7 @@ metadata:
 - `references/gitignore/index.md`：Git 忽略规则模板。任务提到 `.gitignore`、gitignore、忽略文件、提交忽略规则，或要求统一后台项目本地配置、缓存、日志、环境文件、上传目录和 AI/agent 工作目录的忽略规则时，先读取这个文件；`.gitignore` 模板见 `gitignore.md`，汇报模板见 `report.md`。
 - `references/cjs-esm/index.md`：TypeScript 项目的 CommonJS/CJS 到 ESM 迁移。任务提到 `"type": "module"`、`verbatimModuleSyntax`、`import type`、CJS 转 ESM、模块系统迁移，或迁移后需要修复类型导入错误时，先读取这个文件；`package.json` 片段见 `package.md`，`tsconfig.json` 片段见 `tsconfig.md`，类型导入/导出示例见 `imports.md` / `exports.md`，类型检查命令见 `typecheck.md`，汇报模板见 `report.md`。
 - `references/nestjs-latest/index.md`：NestJS 项目升级到 latest。任务提到 NestJS 升级、`@nestjs/*`、`source-map-support`、`--enable-source-maps`、`typecheck`、`tsconfig-paths`、NestJS SWC builder、`.swcrc`、`@swc/core`、`@swc/cli`、`@swc/helpers`、Prisma 7 `prisma-client`、`schema.prisma`，或要求把 NestJS 后台项目升级到最新版本 / 同步 NestJS SWC 配置时，先读取这个文件；脚本模板见 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，`nest-cli.json` 模板见 `nest-cli.md`，`.swcrc` 模板见 `swcrc.md`，Prisma Client 生成器配置见 `prisma-client.md`，依赖命令见 `dependencies.md`，Dockerfile 模板见 `dockerfile.md`，汇报模板见 `report.md`。
+- `references/react/index.md`：CSR React 基础工程模板。任务提到 React CSR、Vite React、React 单页应用、前端基础工程、Tailwind CSS、tsgo、Oxlint/Oxfmt 或要求统一 React 项目的 `package.json`、`tsconfig.json`、`vite.config.ts`、`oxlint.config.ts`、`oxfmt.config.ts`、`lint-staged.config.js` 时，先读取这个文件；模板见同目录 `package.md`、`tsconfig.md`、`vite-config.md`、`oxlint-config.md`、`oxfmt-config.md`、`lint-staged.md`，依赖说明见 `dependencies.md`。
 
 ## 汇报要求
 

@@ -11,12 +11,12 @@ logs/
 coverage/
 .vitest-attachments/
 docker-build.sh
-*.Dockerfile
-public/files/*
-public/uploads/*
+_.Dockerfile
+public/files/_
+public/uploads/_
 .editorconfig
 lint-staged.config.js
-*.DockerFile
+_.DockerFile
 eslint.config.js
 mise.toml
 prettier.config.js
@@ -37,7 +37,9 @@ AGENTS.md
 skills-lock.json
 
 # legacy env
+
 src/env
 
 # env
+
 env

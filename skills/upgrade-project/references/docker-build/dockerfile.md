@@ -1,16 +1,16 @@
 FROM --platform=linux/amd64 node:26.3-slim AS base
 WORKDIR /app
 RUN . /etc/os-release && \
-  echo "deb http://mirrors.aliyun.com/debian/ ${VERSION_CODENAME} main" > /etc/apt/sources.list && \
-  echo "deb http://mirrors.aliyun.com/debian/ ${VERSION_CODENAME}-updates main" >> /etc/apt/sources.list && \
-  echo "deb http://mirrors.aliyun.com/debian-security/ ${VERSION_CODENAME}-security main" >> /etc/apt/sources.list && \
-  rm -rf /etc/apt/sources.list.d/*
+ echo "deb http://mirrors.aliyun.com/debian/ ${VERSION_CODENAME} main" > /etc/apt/sources.list && \
+ echo "deb http://mirrors.aliyun.com/debian/ ${VERSION_CODENAME}-updates main" >> /etc/apt/sources.list && \
+ echo "deb http://mirrors.aliyun.com/debian-security/ ${VERSION_CODENAME}-security main" >> /etc/apt/sources.list && \
+ rm -rf /etc/apt/sources.list.d/_
 RUN apt-get update && \
-  apt-get install -y --no-install-recommends openssl build-essential python3 && \
-  apt-get clean && \
-  apt-get autoclean && \
-  apt-get autoremove -y && \
-  rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+ apt-get install -y --no-install-recommends openssl build-essential python3 && \
+ apt-get clean && \
+ apt-get autoclean && \
+ apt-get autoremove -y && \
+ rm -rf /var/lib/apt/lists/_ /var/cache/apt/archives/\*
 RUN npm install -g pnpm && npm cache clean -f
 
 FROM base AS install
@@ -48,15 +48,15 @@ ENV NODE_ENV=production
 ENV LANG=C.utf8
 ENV LC_ALL=C.utf8
 RUN apt-get update && \
-  apt-get install -y --no-install-recommends bash vim curl procps && \
-  apt-get clean && \
-  apt-get autoclean && \
-  apt-get autoremove -y && \
-  rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+ apt-get install -y --no-install-recommends bash vim curl procps && \
+ apt-get clean && \
+ apt-get autoclean && \
+ apt-get autoremove -y && \
+ rm -rf /var/lib/apt/lists/_ /var/cache/apt/archives/_
 RUN npm install -g pm2 && npm cache clean -f
 RUN pm2 install pm2-logrotate && \
-  pm2 set pm2-logrotate:max_size 200M && \
-  pm2 set pm2-logrotate:retain 7
+ pm2 set pm2-logrotate:max_size 200M && \
+ pm2 set pm2-logrotate:retain 7
 COPY --from=build /app/package.json .
 RUN npm pkg delete scripts.prepare
 COPY --from=build /app/.npmrc .

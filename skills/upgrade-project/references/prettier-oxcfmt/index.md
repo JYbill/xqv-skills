@@ -48,12 +48,12 @@
 
 先读取项目真实配置，再迁移。常见 `.prettierrc` 映射如下：
 
-| Prettier 配置 | Oxfmt 配置 | 说明 |
-| --- | --- | --- |
-| `singleQuote: false` | `singleQuote: false` | 使用双引号。显式保留，避免依赖默认值。 |
-| `singleQuote: true` | `singleQuote: true` | 使用单引号。按项目现状迁移。 |
-| `trailingComma: "all"` | `trailingComma: "all"` | 多行结构尽可能保留尾逗号。 |
-| `printWidth: 120` | `printWidth: 120` | 最大行宽。应显式迁移，避免和工具默认值不一致。 |
+| Prettier 配置          | Oxfmt 配置             | 说明                                           |
+| ---------------------- | ---------------------- | ---------------------------------------------- |
+| `singleQuote: false`   | `singleQuote: false`   | 使用双引号。显式保留，避免依赖默认值。         |
+| `singleQuote: true`    | `singleQuote: true`    | 使用单引号。按项目现状迁移。                   |
+| `trailingComma: "all"` | `trailingComma: "all"` | 多行结构尽可能保留尾逗号。                     |
+| `printWidth: 120`      | `printWidth: 120`      | 最大行宽。应显式迁移，避免和工具默认值不一致。 |
 
 配置模板见同目录的 `oxfmt-config.md`，汇报模板见 `report.md`。不要在 skill/reference 目录中保存真实的 `oxfmt.config.*` 文件，避免被 Oxfmt 的嵌套配置搜索误加载。
 
@@ -137,8 +137,11 @@
 8. 如果项目存在 lint-staged 配置，并且其中调用了 `prettier` 或 `prettier --write`，同步改为 Oxfmt。不要把 `format` 脚本里的全量 glob 复制到 lint-staged 命令里；lint-staged 会把暂存文件路径追加给命令。通常只保留 `oxfmt`，不要在 lint-staged 命令中添加额外参数，并保持原文件匹配规则和提交前检查范围不变。如果项目同时使用 Oxfmt 和 Oxlint，`lint-staged.config.js` 默认模板为：
    ```js
    export default {
-     "*.ts": ["oxfmt --write", "oxlint --config oxlint.config.ts --fix --no-error-on-unmatched-pattern"],
-   };
+     '*.ts': [
+       'oxfmt --write',
+       'oxlint --config oxlint.config.ts --fix --no-error-on-unmatched-pattern',
+     ],
+   }
    ```
    其中 `--no-error-on-unmatched-pattern` 用于允许暂存文件经过 Oxlint ignore 过滤后没有可 lint 文件，避免为 `.d.ts` 等文件额外拆出多套规则。
 9. 删除 Prettier 配置文件。
@@ -179,9 +182,9 @@ Oxfmt 加载 `.ts` 配置时使用 Node 的原生 `import()`。因此模板统�
 ```ts
 export default {
   singleQuote: false,
-  trailingComma: "all",
+  trailingComma: 'all',
   printWidth: 120,
-};
+}
 ```
 
 处理方式：
