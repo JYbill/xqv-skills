@@ -44,9 +44,38 @@ React hook 主文件只保留 hook 自身的 state、ref、memo、effect、callb
 
 `enum.ts` 在本项目里可以承载语义化 `const`、`Set`、正则和真正的 `enum`。不要为了文件名叫 enum 就把所有值强行改成 TypeScript `enum`。业务状态码、任务码、类型码这类语义明确的数字常量，才优先使用真正的 `enum` 或项目既有枚举模式。
 
+## 前置判断：先判断该不该抽
+
+`react-ddt` 的顺序是先判断拆分有没有收益，再判断放到 `util.ts`、`enum.ts` 还是类型文件。不要只因为某段逻辑是纯函数、静态常量或类型定义，就机械抽出去。
+
+```text
+看到 React 文件里的函数 / 常量 / 类型 / 兜底分支
+        │
+        ▼
+它是否属于 React 主流程？
+        ├─ 是：保留在组件或 hook 主文件
+        │
+        └─ 否
+             │
+             ▼
+它是否有稳定复用、复杂逻辑、外部协议或测试边界？
+             ├─ 否：内联、合并类型、保留局部字面量或删除重复兜底
+             │
+             └─ 是
+                  │
+                  ▼
+       按职责落点：纯逻辑 -> util.ts；固定配置 -> enum.ts；类型 -> 项目类型规范
+```
+
+小函数只有一个调用方、2 到 5 行、名字只是 `parse` / `build` / `normalize` / `to` 这类实现描述、调用者仍要点进去看细节、没有独立测试价值时，默认内联。只有被稳定复用、能明显压低主流程复杂度、表达外部协议或复杂业务边界时，才保留函数。
+
+薄类型只服务一个父类型、只是改名 / 摘字段 / 一层别名、拆完增加跳转时，默认合并。只有类型本身是 API 返回体、事件载荷、消息体、稳定嵌套结构，或被多个模块独立消费时，才拆出来。
+
+兜底逻辑只在输入来自用户、网络、浏览器 API、外部 SDK、历史脏数据等不稳定边界时保留。状态已经由 React 生命周期、事件顺序、状态机或类型定义保证时，不要再加“更稳”的重复兜底。
+
 ## 判断纯函数是否应该抽离
 
-满足这些条件时，默认抽到同目录 `util.ts`：
+满足这些条件时，只能说明它是抽离候选；是否真的抽离，还要先走前置判断：
 
 - 不调用 React hook
 - 不读取组件或 hook 内部 state、ref、context、dispatch
@@ -57,7 +86,7 @@ React hook 主文件只保留 hook 自身的 state、ref、memo、effect、callb
 
 如果函数虽然写在组件里，但只是因为要读 `props` 或 `state`，且可以通过参数完整传入，就应该抽离，让组件只负责把参数传进去。
 
-这个判断还有一个前提：抽离后要降低阅读成本。只被调用一次、函数体只是单行包装已有工具函数、类型转换或空值兜底的薄 helper，不应该为了满足“纯函数放 util”而新增导出函数；直接把表达式写在调用处，必要时用局部变量承接。
+这个判断还有一个前提：抽离后要降低阅读成本。抽离出来的方法必须包含值得命名的复杂逻辑、复用价值或明确业务边界。只被调用一次、函数体只是简单字段映射、`typeof` 判断、一次性 type guard、包装已有工具函数、类型转换或空值兜底的薄 helper，不应该为了满足“纯函数放 util”而新增函数；直接把表达式写在调用处，必要时用局部变量承接。
 
 如果函数必须直接操作 `setState`、读取 ref、处理事件对象、关闭弹窗、发起当前组件的副作用，通常保留在组件或 hook 主文件里。它属于 React 交互逻辑，不要为了形式抽成 util。
 
@@ -88,13 +117,13 @@ API 请求参数、响应 DTO 和数据库结构不要放 React 组件目录的 
 
 审查当前改动时，先列出所有被改到的 React hook、React 组件和 `.tsx` 文件，再按文件逐个检查。
 
-对每个文件先找顶层 `const`、`function`、`type`、`interface`。再判断它们是否属于 React 主流程。属于纯函数的移到 `util.ts`，属于静态常量的移到 `enum.ts`，属于类型的按项目类型规范移动；没有明确规范时，才考虑同目录 `types.ts`。
+对每个文件先找顶层 `const`、`function`、`type`、`interface`。先判断它们是否属于 React 主流程，再判断拆分是否有真实收益。确认值得拆分后，纯函数移到 `util.ts`，静态常量移到 `enum.ts`，类型按项目类型规范移动；没有明确规范时，才考虑同目录 `types.ts`。
 
 移动后要更新 import。`import` 和 `import type` 不能从同一路径拆成重复导入，必须合并。类型导入使用 `import type`。
 
 移动后要检查循环引用。`util.ts` 可以 import 类型文件和 `enum.ts`，组件可以 import `util.ts`、`enum.ts` 和项目规定的类型文件。不要让类型文件反向 import 组件，也不要让 `enum.ts` import React 组件。
 
-移动后要检查注释。导出函数必须保留或补齐简短 JSDoc。复杂纯逻辑里的关键业务判断保留行内注释，不要删掉有价值的中文说明。
+移动后要检查注释。所有保留的方法都必须有简短方法级 JSDoc；如果 JSDoc 只能复述函数名或表面行为，优先判断该方法是否过度封装并内联。复杂纯逻辑里的关键业务判断保留行内注释，不要删掉有价值的中文说明。
 
 最后运行最小必要验证。默认至少对受影响文件跑 ESLint，再按任务影响补 `npm run check-types`、`npm run verify:i18n` 或页面手动验证。
 
@@ -104,7 +133,7 @@ API 请求参数、响应 DTO 和数据库结构不要放 React 组件目录的 
 
 如果一段逻辑本来就是组件事件 handler 里的两三行 state 更新，不要抽到 util。
 
-如果一个纯函数只被调用一次，且函数体只是单行包装已有工具函数、类型转换或空值兜底，优先内联到调用处；不要抽成 util 导出函数。抽离是为了复用或隔离复杂判断，不是给简单表达式取一个更长的名字。
+如果一个纯函数只被调用一次，且函数体只是简单字段映射、`typeof` 判断、一次性 type guard、单行包装已有工具函数、类型转换或空值兜底，优先内联到调用处；不要抽成 util 函数。抽离是为了复用或隔离复杂判断，不是给简单表达式取一个更长的名字。
 
 如果一个类型只是某个 props 的一行字段别名，不要为了拆分再造一层薄类型，直接写进 props 类型里。
 
@@ -120,11 +149,14 @@ API 请求参数、响应 DTO 和数据库结构不要放 React 组件目录的 
 - `ExampleList.tsx` 顶层定义 `buildInitialRange()`；它只根据入参构造默认范围，不读取组件 state、ref 或生命周期，应该放同级 `util.ts`
 - `useExampleSelection.ts` 里定义不读取 hook state 的 `isSameSelection()`
 - `util.ts` 里新增只被调用一次的 `normalizeSignInTemplateCourseId()`；函数体只是 `normalizePositiveFiniteNumber(courseId) ?? null`，应该内联到调用处
+- `util.ts` 里新增 `buildUserInfo()`，函数体只是把几个字段按 `typeof` 映射成对象，应该耦合在生成上下文的函数里
+- `util.ts` 里新增 `isAppJwtClaims()`，函数体只是一次性对象 / 数组判断，应该内联到使用它的解析函数里
 - 组件文件里塞入很长的 props、映射结构或复用类型，而项目规范要求这类类型放到独立类型文件
 - hook 主文件里定义复杂参数 interface，而项目已有 hook 类型统一放置位置
 - TSX 里散落 `example-`、`item-` 这类 ID 前缀字符串
 - TSX 里散落用于浮层定位的宽度、高度、gap、padding 数字
 - util 里重复写和 enum 里同语义的固定字符串或数字
+- 为单次出现且上下文自解释的 JSX 字符串、样式值、简单布尔判断新增 `enum.ts` 或 `util.ts`
 
 ## 示例
 
@@ -151,7 +183,7 @@ export function useExampleSelection(params: UseExampleSelectionParams) {
 
 更合适的放置方式：
 
-下面示例假设项目约定把当前 hook 的局部类型放在同目录 `types.ts`。真实项目要按其类型规范替换类型落点。
+这个判断只有一个调用方，且只是长度比较，内联后阅读路径更短。下面示例假设项目约定把当前 hook 的局部类型放在同目录 `types.ts`。真实项目要按其类型规范替换类型落点。
 
 ```ts
 // enum.ts
@@ -167,21 +199,12 @@ export interface UseExampleSelectionParams {
 ```
 
 ```ts
-// util.ts
-/** 判断当前选中项是否覆盖全部候选项。 */
-export function isAllSelected(selectedIds: string[], allIds: string[]) {
-  return selectedIds.length === allIds.length;
-}
-```
-
-```tsx
 // useExampleSelection.ts
 import type { UseExampleSelectionParams } from "./types";
-import { isAllSelected } from "./util";
 
 /** 管理示例选择状态。 */
 export function useExampleSelection(params: UseExampleSelectionParams) {
-  const allSelected = useMemo(() => isAllSelected(params.selectedIds, params.allIds), [params.selectedIds, params.allIds]);
+  const allSelected = useMemo(() => params.selectedIds.length === params.allIds.length, [params.selectedIds, params.allIds]);
 
   return { allSelected };
 }
