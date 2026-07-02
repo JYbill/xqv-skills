@@ -40,6 +40,12 @@
 
 补充约束：这个 skill 禁止用 Bash、subagent、Agent、Glob、Grep、Read 一类常规工具替代外部搜索；只有用户明确要求处理本地文件，或提供了本地输入文件时，才读取本地文件。查不到的信息必须直接说明未查到，不能猜。
 
+### style-fix
+
+用于修复 CSS、Tailwind CSS、CSS Module、Ant Design 样式覆盖、className、主题 token、布局和视觉样式问题。适合处理 CSS 报错、Missing comma、选择器、@apply、Tailwind v4 canonical class、颜色、间距、圆角、表格样式和 AntD 覆盖。
+
+补充约束：只做最小范围样式修正，不重构业务逻辑、不重新设计 UI、不顺手做类型治理；复杂判断流程已在 skill 内用 ASCII 图定义。
+
 ### summary
 
 用于根据指定代码文件生成清晰的人类友好总结文档。适合用户要求总结某个模块、tool、service、接口链路、核心逻辑、影响范围或 TODO 时使用。
