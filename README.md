@@ -34,11 +34,11 @@
 
 ### search
 
-用于按问题场景使用 GitHub MCP、Context7 MCP、Exa WebSearch MCP 搜索并回答。适合用户要求联网检索、查 GitHub 项目和源码、核对框架或 SDK 文档、查 API 用法，以及查官网、博客、产品信息、新闻和对比资料时使用。
+用于按问题场景使用 Context7 MCP 和 Exa WebSearch MCP 检索并回答。适合用户要求查询库、框架、SDK、CLI、云服务或 API 文档，或要求联网搜索官网、博客、新闻、产品信息、价格规格和对比资料时使用。
 
-使用原则：GitHub 仓库内的源码、README、issue、PR、commit、release、workflow 等事实优先走 GitHub MCP；库、框架、SDK、API 参数、配置项、迁移说明和最佳实践优先走 Context7 MCP；全网资料、官网页面、博客、新闻和产品对比优先走 Exa WebSearch MCP。一个问题同时涉及多种来源时可以组合使用，但回答里必须标明来源。
+使用原则：库、框架、SDK、CLI、云服务、API 参数、配置项、迁移说明和版本行为优先走 Context7 MCP；开放网页、官网页面、博客、新闻、产品信息和跨来源对比优先走 Exa WebSearch MCP。GitHub 仓库、issue、PR、commit、release、workflow、源码核对等任务交给专门的 GitHub skill。
 
-补充约束：这个 skill 禁止用 Bash、subagent、Agent、Glob、Grep、Read 一类常规工具替代外部搜索；只有用户明确要求处理本地文件，或提供了本地输入文件时，才读取本地文件。查不到的信息必须直接说明未查到，不能猜。
+补充约束：这个 skill 禁止用 Bash、subagent、Agent、普通文件搜索工具替代外部搜索；本地文件、当前仓库代码、日志或配置检索不走这个 skill。查不到的信息必须直接说明未查到，不能猜。
 
 ### style-fix
 
