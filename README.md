@@ -6,7 +6,9 @@
 
 ### ddt
 
-用于检查并纠正代码里的过度封装、过度抽象、薄 helper、薄类型拆分、单次引用 enum / 常量和项目编码规范问题。适合用户要求内联单一调用方的小函数、合并没有复用价值的薄类型、把只有一处引用的常量耦合回使用处、提升主流程可读性，或检查代码是否符合仓库 `CLAUDE.md` / `AGENTS.md` 规范时使用。
+用于检查并纠正代码里的 dont-do-that packaging 问题，包括过度封装、过度抽象、薄 helper、薄类型拆分、单次引用 enum / 常量、实例属性绕传参数、React 组件职责放置错误和 Node.js 后台分层职责错误。适合用户要求内联单一调用方的小函数、合并没有复用价值的薄类型、把只有一处引用的常量耦合回使用处、整理 React hook / TSX 职责、检查 Node.js service / logic / query 分层，或检查代码是否符合仓库 `CLAUDE.md` / `AGENTS.md` 规范时使用。
+
+补充约束：`SKILL.md` 只保留通用核心流程和 ASCII 判断图；React 专项细则在 `references/react/index.md`，Node.js 后台专项细则在 `references/nodejs/index.md`。
 
 ### kysely-schema
 
@@ -25,12 +27,6 @@
 ### notes
 
 用于代码注释治理。适合补注释、调整注释、review 注释质量，以及判断复杂逻辑、数据转换、输出模板、字符串拼接展示文案和 Agent 提示边界中哪些内容值得注释。
-
-### react-ddt
-
-用于审查并修正 React hook、React 组件和 TSX 文件里的职责放置错误。适合把与 React state 无关且确实值得抽离的纯函数抽到同目录 `util.ts`，把有复用或边界价值的静态常量抽到 `enum.ts`，把只有一处引用的 enum / 常量直接耦合回使用处，并按项目规范放置组件 props、hook 参数和局部业务类型。
-
-补充约束：它和 `ddt` 不是替代关系；`ddt` 负责反对无收益的过度封装，`react-ddt` 负责让 React 文件只保留渲染、hook 调用、事件 handler、state / ref / effect 强绑定逻辑和必要的 JSX 分支。
 
 ### search
 
