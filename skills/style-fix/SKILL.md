@@ -70,11 +70,11 @@ git status --short
              +-- 否：建议确认或列为未处理
 ```
 
-| 分类 | 处理 |
-| --- | --- |
+| 分类     | 处理                                                                                                                                                                                                            |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 必须修复 | Tailwind v3 写法、Tailwind v4 canonical class、可无损替换的 arbitrary value、已有 token 却使用裸值、应随主题变化却写死固定色、CSS Module 命名不符合约定、无边界 Ant Design 覆盖、增加维护负担的一次性样式抽象。 |
-| 建议确认 | 视觉表达重做、历史样式统一、可内联可保留的 className、新增全局 token / 覆盖、会扩大到非本次范围的项。 |
-| 无需处理 | 没有必须修复项时，不为体现使用本 Skill 而改 className、搬 CSS Module 或替换视觉写法；只汇报范围和依据。 |
+| 建议确认 | 视觉表达重做、历史样式统一、可内联可保留的 className、新增全局 token / 覆盖、会扩大到非本次范围的项。                                                                                                           |
+| 无需处理 | 没有必须修复项时，不为体现使用本 Skill 而改 className、搬 CSS Module 或替换视觉写法；只汇报范围和依据。                                                                                                         |
 
 本 Skill 被新功能或旧功能修改顺带触发时，只处理与当前改动直接相关的必须修复项。
 
@@ -123,7 +123,7 @@ git status --short
 - 避免把已有 token 写成裸 hex、`[]` arbitrary value、`text-[var(--xxx)]`、`bg-(--brand-wzj6)` 或 `text-(color:--brand-wzj6)`。
 - Tailwind v4 重要性写法使用后缀：`!text-font-wzj1` -> `text-font-wzj1!`，`disabled:!bg-gray-f0` -> `disabled:bg-gray-f0!`。
 - `bg-gradient-to-r` -> `bg-linear-to-r`；同宽高优先 `size-*`。
-- spacing scale 按 `1 = 4px` 换算：`min-w-[1180px]` -> `min-w-295`、`w-[360px]` -> `w-90`、`max-w-[720px]` -> `max-w-180`。
+- spacing scale 按 `1 = 4px` 换算，支持 Tailwind 已存在的 0.25 步进；不要只按 4px 整数倍判断。例如 `min-w-[1180px]` -> `min-w-295`、`w-[360px]` -> `w-90`、`max-w-[720px]` -> `max-w-180`、`ml-[5px]` -> `ml-1.25`。
 - 默认 token 可无损表达时才替换：`text-[14px]` -> `text-sm`、`text-[16px]` -> `text-base`、`leading-[20px]` -> `leading-5`、`leading-[22px]` -> `leading-5.5`、`rounded-[8px]` -> `rounded-lg`、`rounded-[12px]` -> `rounded-xl`、`rounded-[16px]` -> `rounded-2xl`。
 - `rounded-[10px]`、`rounded-[14px]` 这类没有无损等价的写法先保留或列为建议确认，不要近似替换。
 - 编辑器 / linter 提示的 canonical class 要一并处理，例如 `break-words` -> `wrap-break-word`，并按项目 class 排序规则调整顺序。
@@ -179,13 +179,13 @@ CSS Missing comma / 选择器解析错误
 
 ## 示例
 
-| 场景 | 调整前 | 调整后 |
-| --- | --- | --- |
-| 主题 token | `border-[#02A999] bg-[#E8FFF9] text-[var(--brand-wzj6)]` | `border-brand-wzj6 bg-brand-wzj1 text-brand-wzj6` |
-| v4 重要性写法 | `!text-font-wzj1 disabled:!bg-gray-f0` | `text-font-wzj1! disabled:bg-gray-f0!` |
-| spacing scale | `min-w-[1180px] w-[360px] max-w-[720px]` | `min-w-295 w-90 max-w-180` |
-| 字号、行高、圆角 | `rounded-[12px] text-[14px] leading-[22px]` | `rounded-xl text-sm leading-5.5` |
-| canonical class | `ml-1 break-words` | `wrap-break-word ml-1` |
+| 场景             | 调整前                                                   | 调整后                                            |
+| ---------------- | -------------------------------------------------------- | ------------------------------------------------- |
+| 主题 token       | `border-[#02A999] bg-[#E8FFF9] text-[var(--brand-wzj6)]` | `border-brand-wzj6 bg-brand-wzj1 text-brand-wzj6` |
+| v4 重要性写法    | `!text-font-wzj1 disabled:!bg-gray-f0`                   | `text-font-wzj1! disabled:bg-gray-f0!`            |
+| spacing scale    | `min-w-[1180px] w-[360px] max-w-[720px] ml-[5px]`        | `min-w-295 w-90 max-w-180 ml-1.25`                |
+| 字号、行高、圆角 | `rounded-[12px] text-[14px] leading-[22px]`              | `rounded-xl text-sm leading-5.5`                  |
+| canonical class  | `ml-1 break-words`                                       | `wrap-break-word ml-1`                            |
 
 Ant Design 槽位示例：
 
