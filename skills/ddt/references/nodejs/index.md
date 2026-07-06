@@ -110,36 +110,36 @@ SQL 别名要可读。别名如果只为绕过类型问题或缩短几字符，�
 单次小 helper 应内联：
 
 ```ts
-const labels = toolList.map((tool) => tool.label);
+const labels = toolList.map((tool) => tool.label)
 ```
 
 薄类型应合并成直接边界：
 
 ```ts
 export type AgentMessageData = {
-  id: string;
-  parent_id: string | null;
-  label: string;
-  status: string;
-  title?: string;
+  id: string
+  parent_id: string | null
+  label: string
+  status: string
+  title?: string
   outputs?: {
-    structured_output?: Record<string, string>;
-    answer_text?: string;
-  };
-};
+    structured_output?: Record<string, string>
+    answer_text?: string
+  }
+}
 
 export type DifyMsgSSERes = {
-  event: string;
-  data: AgentMessageData;
-};
+  event: string
+  data: AgentMessageData
+}
 ```
 
 单点非业务字面量不必机械新增 enum：
 
 ```ts
 window.setTimeout(() => {
-  retry();
-}, 100);
+  retry()
+}, 100)
 ```
 
 如果 `0` / `1` 表达 `doDelete`、状态、类型、开关或任务含义，则不要内联，要按项目规范抽到 `enum/**`。

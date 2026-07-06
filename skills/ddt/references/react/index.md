@@ -8,7 +8,7 @@ React 组件文件只保留渲染、props 解构、React hook 调用、事件 ha
 
 React hook 主文件只保留 hook 自身的 state、ref、memo、effect、callback 编排，以及必须读取 hook 内状态的闭包逻辑。
 
-如果组件或 hook 里存在与 React state、ref、effect 生命周期无关的纯函数，先判断它是否真的值得抽离。值得抽离时，放到当前目录下的 `util.ts`；只被调用一次、逻辑很薄、名字不能提供新语义时，内联回调用处。
+如果组件或 hook 里存在与 React state、ref、effect 生命周期无关的纯函数，先判断它是否真的值得抽离。值得抽离时，按项目文件命名规范放置：源文件专属工具函数放到 `{源文件}.util.ts`，目录级共享工具函数才放到 `util.ts`；只被调用一次、逻辑很薄、名字不能提供新语义时，内联回调用处。
 
 如果存在静态常量，先判断引用次数和语义收益。只有被多处稳定复用，或表达外部协议、复杂业务边界且抽离能降低阅读成本时，才抽到当前目录下的 `enum.ts`。只有一处引用的 enum、`const`、`as const` 对象、延迟时间、阈值、固定 key、状态值等，默认直接耦合在使用处。
 
@@ -33,7 +33,8 @@ React hook 主文件只保留 hook 自身的 state、ref、memo、effect、callb
              │
              ▼
 按职责放置
-        ├─ 纯逻辑 ─────► util.ts
+        ├─ 源文件专属纯逻辑 ─► {源文件}.util.ts
+        ├─ 目录级共享纯逻辑 ─► util.ts
         ├─ 可复用固定配置 ─► enum.ts
         ├─ 类型 ───────► 项目类型规范
         └─ 单次引用常量 ─► 使用处
@@ -87,11 +88,11 @@ API 请求参数、响应 DTO 和数据库结构不要放 React 组件目录的 
 
 审查当前改动时，先列出所有被改到的 React hook、React 组件和 `.tsx` 文件，再按文件逐个检查。
 
-对每个文件先找顶层 `const`、`function`、`type`、`interface`。先判断它们是否属于 React 主流程，再判断拆分是否有真实收益。确认值得拆分后，纯函数移到 `util.ts`，可复用静态常量移到 `enum.ts`，类型按项目类型规范移动。
+对每个文件先找顶层 `const`、`function`、`type`、`interface`。先判断它们是否属于 React 主流程，再判断拆分是否有真实收益。确认值得拆分后，源文件专属纯函数移到 `{源文件}.util.ts`，目录级共享纯函数移到 `util.ts`，可复用静态常量移到 `enum.ts`，类型按项目类型规范移动。
 
 移动后更新 import。`import` 和 `import type` 不能从同一路径拆成重复导入，必须合并。类型导入使用 `import type`。
 
-移动后检查循环引用。`util.ts` 可以 import 类型文件和 `enum.ts`，组件可以 import `util.ts`、`enum.ts` 和项目规定的类型文件。不要让类型文件反向 import 组件，也不要让 `enum.ts` import React 组件。
+移动后检查循环引用。`{源文件}.util.ts` 和 `util.ts` 可以 import 类型文件和 `enum.ts`，组件可以 import 工具文件、`enum.ts` 和项目规定的类型文件。不要让类型文件反向 import 组件，也不要让 `enum.ts` import React 组件。
 
 保留的方法需要简短 JSDoc；如果 JSDoc 只能复述函数名或表面行为，优先判断该方法是否过度封装并内联。复杂纯逻辑里的关键业务判断保留行内注释。
 
@@ -103,6 +104,7 @@ API 请求参数、响应 DTO 和数据库结构不要放 React 组件目录的 
 - `ExampleList.tsx` 顶层定义不读取组件 state、ref 或生命周期的 `buildInitialRange()`。
 - `useExampleSelection.ts` 里定义不读取 hook state 的 `isSameSelection()`。
 - `util.ts` 里新增只被调用一次、函数体只是包装已有工具函数的 helper。
+- `index.tsx` 的专属纯函数被抽到目录级 `util.ts`，但项目规范要求源文件专属工具函数放到 `{源文件}.util.ts`；例如只服务 `BackendExecTool/index.tsx` 的工具函数应放到 `BackendExecTool/index.util.ts`，不是 `BackendExecTool/util.ts`。
 - 组件文件里塞入很长的 props、映射结构或复用类型，而项目规范要求这类类型放到独立类型文件。
 - hook 主文件里定义复杂参数 interface，而项目已有 hook 类型统一放置位置。
 - TSX 里散落多处同语义 ID 前缀、storage key、mode 或 status。
@@ -117,9 +119,9 @@ export function useExampleSelection(params: UseExampleSelectionParams) {
   const allSelected = useMemo(
     () => params.selectedIds.length === params.allIds.length,
     [params.selectedIds, params.allIds],
-  );
+  )
 
-  return { allSelected };
+  return { allSelected }
 }
 ```
 
@@ -127,24 +129,24 @@ export function useExampleSelection(params: UseExampleSelectionParams) {
 
 ```tsx
 const handleCopy = () => {
-  setCopied(true);
-  window.setTimeout(() => setCopied(false), 100);
-};
+  setCopied(true)
+  window.setTimeout(() => setCopied(false), 100)
+}
 ```
 
-确实值得抽离的纯构造逻辑放到 `util.ts`：
+确实值得抽离、且只服务 `ExampleList.tsx` 的纯构造逻辑放到 `ExampleList.util.ts`：
 
 ```ts
 /** 根据外部传入值构造初始范围；空值不生成范围。 */
 export function buildInitialRange(value?: string): { start: string; end: string } | null {
-  const trimmedValue = value?.trim();
+  const trimmedValue = value?.trim()
 
-  if (!trimmedValue) return null;
+  if (!trimmedValue) return null
 
   return {
     start: `${trimmedValue}-start`,
     end: `${trimmedValue}-end`,
-  };
+  }
 }
 ```
 
