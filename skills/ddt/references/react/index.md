@@ -12,7 +12,7 @@ React hook 主文件只保留 hook 自身的 state、ref、memo、effect、callb
 
 如果存在静态常量，先判断引用次数和语义收益。只有被多处稳定复用，或表达外部协议、复杂业务边界且抽离能降低阅读成本时，才抽到当前目录下的 `enum.ts`。只有一处引用的 enum、`const`、`as const` 对象、延迟时间、阈值、固定 key、状态值等，默认直接耦合在使用处。
 
-如果存在类型定义，先判断它是否应该从 React 主文件中移出，再按项目类型规范和现有目录模式决定落点，不能一刀切新建或搬到当前目录 `types.ts`。
+如果存在类型定义，先判断它是否应该从 React 主文件中移出。确认值得剥离时，先按项目类型文件规则和现有目录模式决定落点；项目没有约束时，再使用同目录 `{源文件名}.d.ts`，例如 `ChatComponent.tsx` 对应 `ChatComponent.d.ts`。
 
 ## React 判断图
 
@@ -36,7 +36,7 @@ React hook 主文件只保留 hook 自身的 state、ref、memo、effect、callb
         ├─ 源文件专属纯逻辑 ─► {源文件}.util.ts
         ├─ 目录级共享纯逻辑 ─► util.ts
         ├─ 可复用固定配置 ─► enum.ts
-        ├─ 类型 ───────► 项目类型规范
+        ├─ 类型 ───────► 项目类型规范；无项目约束时用 {源文件名}.d.ts
         └─ 单次引用常量 ─► 使用处
 ```
 
@@ -72,15 +72,17 @@ React hook 主文件只保留 hook 自身的 state、ref、memo、effect、callb
 
 ## 类型放置
 
-先读取项目规范、同目录既有文件和上层模块约定，再决定类型落点。类型剥离的目标是让 React 主文件更聚焦，不是强制制造 `types.ts`。
+先读取项目规范、同目录既有文件和上层模块约定，再决定类型落点。类型剥离的目标是让 React 主文件更聚焦，不是强制制造额外文件。
 
-如果项目规定组件 props、hook 参数或 hook 返回值放在组件目录 `types.ts`，就复用现有 `types.ts`；没有时再判断是否需要新建。
+项目明确规定组件 props、hook 参数、模块共享 view model、API DTO 或全局声明的类型文件位置 / 命名时，按项目规定处理。例如可以是组件目录 `types.ts`、模块级 `types.ts`、`<api-file>.types.ts`、`src/types/*.d.ts` 或其他项目约定位置。
 
-如果项目规定放在模块级 `types.ts`、`src/types/**`、feature 级类型文件、接口层类型文件，必须按项目规范走。
+项目没有类型文件约束时，才把从单个业务 `.ts` / `.tsx` 源文件剥离出的类型放到同目录 `{源文件名}.d.ts`，例如 `ExampleList.tsx` 对应 `ExampleList.d.ts`，`useExampleSelection.ts` 对应 `useExampleSelection.d.ts`。导入时使用 `import type`。
+
+不要为了单个源文件新增或复用与项目规范冲突的泛化 `types.ts`、`type.ts`、`*.types.ts`、模块级类型收集文件。已经存在的历史类型文件只在处理范围外保持不动；本次 DDT 触碰到并需要剥离的类型，按项目规范或无约束 fallback 处理。
 
 如果项目惯例允许很小的局部 props 类型贴在组件文件内，且该类型没有复用价值、不会压重主流程，可以保留在组件文件内。
 
-API 请求参数、响应 DTO 和数据库结构不要放 React 组件目录的 `types.ts`，要继续遵守项目 API 类型规范。
+API 请求参数、响应 DTO 和数据库结构不要放 React 组件目录的类型文件；如果当前任务触碰的是 API 或后台业务源文件，先遵守对应项目 API / 后台类型规范，项目无约束时才按对应源文件的 `{源文件名}.d.ts` fallback 处理。
 
 跨模块稳定复用的类型不要放局部 `types.ts`，要进入项目既有公共类型位置。
 
@@ -88,11 +90,11 @@ API 请求参数、响应 DTO 和数据库结构不要放 React 组件目录的 
 
 审查当前改动时，先列出所有被改到的 React hook、React 组件和 `.tsx` 文件，再按文件逐个检查。
 
-对每个文件先找顶层 `const`、`function`、`type`、`interface`。先判断它们是否属于 React 主流程，再判断拆分是否有真实收益。确认值得拆分后，源文件专属纯函数移到 `{源文件}.util.ts`，目录级共享纯函数移到 `util.ts`，可复用静态常量移到 `enum.ts`，类型按项目类型规范移动。
+对每个文件先找顶层 `const`、`function`、`type`、`interface`。先判断它们是否属于 React 主流程，再判断拆分是否有真实收益。确认值得拆分后，源文件专属纯函数移到 `{源文件}.util.ts`，目录级共享纯函数移到 `util.ts`，可复用静态常量移到 `enum.ts`，类型按项目类型规范移动；项目无约束时使用 `{源文件名}.d.ts`。
 
 移动后更新 import。`import` 和 `import type` 不能从同一路径拆成重复导入，必须合并。类型导入使用 `import type`。
 
-移动后检查循环引用。`{源文件}.util.ts` 和 `util.ts` 可以 import 类型文件和 `enum.ts`，组件可以 import 工具文件、`enum.ts` 和项目规定的类型文件。不要让类型文件反向 import 组件，也不要让 `enum.ts` import React 组件。
+移动后检查循环引用。`{源文件}.util.ts` 和 `util.ts` 可以 import 类型文件和 `enum.ts`，组件可以 import 工具文件、`enum.ts` 和项目规定的类型文件；项目无约束时可以 import 同名 `.d.ts` 类型文件。不要让类型文件反向 import 组件，也不要让 `enum.ts` import React 组件。
 
 保留的方法需要简短 JSDoc；如果 JSDoc 只能复述函数名或表面行为，优先判断该方法是否过度封装并内联。复杂纯逻辑里的关键业务判断保留行内注释。
 
