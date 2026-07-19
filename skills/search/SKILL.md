@@ -1,13 +1,13 @@
 ---
 name: search
-description: 按问题场景使用 Context7 MCP 和 Exa WebSearch MCP 检索并回答。用户要求查询库、框架、SDK、CLI、云服务或 API 文档时使用 Context7；用户要求联网搜索、查官网、博客、新闻、产品信息、对比资料或其他开放网页资料时使用 Exa。这个 skill 不处理本地文件检索或代码托管仓库任务，并禁止用 Bash、subagent 或普通文件检索工具替代外部搜索。
+description: 按问题场景使用 Context7 CLI 和 Exa WebSearch MCP 检索并回答。用户要求查询库、框架、SDK、CLI、云服务或 API 文档时，先完整读取 find-docs skill，再按其说明调用 Context7 CLI；用户要求联网搜索官网、博客、新闻、产品信息、对比资料或其他开放网页资料时使用 Exa。这个 skill 不处理本地文件检索或代码托管仓库任务。
 ---
 
 # search
 
 这个 skill 只负责两类外部信息源：
 
-- Context7 MCP：查库、框架、SDK、API、CLI、云服务文档和版本用法。
+- Context7 CLI：查库、框架、SDK、API、CLI、云服务文档和版本用法；具体查询流程以 `find-docs` skill 为准。
 - Exa WebSearch MCP：查开放网页资料，例如官网、博客、新闻、产品页、对比资料和非文档型资料。
 
 GitHub 仓库、issue、PR、commit、release、workflow、源码核对等任务交给专门的 GitHub skill，不在这里处理。
@@ -27,7 +27,7 @@ GitHub 仓库、issue、PR、commit、release、workflow 或源码核对？
   |
   v
 库、框架、SDK、CLI、云服务或 API 文档？
-  |-- 是 --> 使用 Context7 MCP
+  |-- 是 --> 完整读取 find-docs skill，按其说明使用 Context7 CLI
   |
   v
 官网、博客、新闻、产品信息、价格规格、对比资料或最新网页？
@@ -42,11 +42,12 @@ GitHub 仓库、issue、PR、commit、release、workflow 或源码核对？
 - 先判断用户要的是“技术文档”还是“开放网页资料”。
 - 能用 Context7 查到的库文档，不用 Exa 代替。
 - 需要最新网页、官方公告、博客、产品信息或跨来源对比时，用 Exa。
-- 不用 Bash、subagent、Agent、普通文件搜索工具替代 MCP 搜索。
+- 全部检索在当前上下文中完成，不把检索任务委派给 subagent 或 Agent。
+- 本地文件工具只用于定位并读取 `find-docs` skill，不用来替代外部检索。
 - 查不到就说明未查到，不把猜测写成事实。
 - 回答要标明信息来源；如果是自己的整理判断，要和检索事实分开。
 
-## Context7 MCP
+## Context7 CLI
 
 使用场景：
 
@@ -55,10 +56,12 @@ GitHub 仓库、issue、PR、commit、release、workflow 或源码核对？
 
 使用步骤：
 
-1. 先确认库名和主题。
-2. 需要库 ID 时，先解析库 ID。
-3. 拉取与主题最相关的文档。
-4. 用文档事实回答，并标明来自哪个库或文档主题。
+1. 先确认库名和具体问题。
+2. 定位当前环境可用的 `find-docs` skill，并完整读取它的 `SKILL.md`。
+3. 严格按 `find-docs` 的流程调用 Context7 CLI，完成库解析和文档查询。
+4. 用查到的文档事实回答，并标明来自哪个库或文档主题。
+
+`find-docs` 是 Context7 CLI 查询流程的单一事实源。本 skill 不复制它的命令、参数和认证细节。找不到 `find-docs` 或 CLI 调用失败时，明确说明失败原因，不改用 Context7 MCP 或 Exa 猜测技术文档答案。
 
 不要用 Context7 查新闻、博客、产品宣传页、社区讨论或仓库内部实现细节。
 
@@ -80,6 +83,6 @@ GitHub 仓库、issue、PR、commit、release、workflow 或源码核对？
 
 ## 组合使用
 
-- API 或配置事实用 Context7。
+- API 或配置事实按 `find-docs` skill 使用 Context7 CLI。
 - 官方公告、产品边界、市场信息、新闻和跨来源对比用 Exa。
 - 同一问题用到两个来源时，分别标明来源，不把不同来源混成一个未标注结论。
