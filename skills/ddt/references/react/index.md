@@ -10,6 +10,23 @@ React hook 主文件只保留 hook 自身的 state、ref、memo、effect、callb
 
 如果组件或 hook 里存在与 React state、ref、effect 生命周期无关的纯函数，先判断它是否真的值得抽离。值得抽离时，按项目文件命名规范放置：源文件专属工具函数放到 `{源文件}.util.ts`，目录级共享工具函数才放到 `util.ts`；只被调用一次、逻辑很薄、名字不能提供新语义时，内联回调用处。
 
+React 前端 `util` 文件中存在明确主从调用关系的紧密相关方法，且这些方法都值得保留时，使用同一个静态 class 组织为静态方法，不要平铺为多个顶层函数。只服务于主方法的耦合子方法使用 `private static`；没有主从关系的独立工具方法不强行放进同一个 class。
+
+```ts
+export class DisplayMessageUtil {
+  static buildDisplayMessages(messages: Message[]) {
+    // ...
+    return this.buildDisplayTurn(messages)
+  }
+
+  private static buildDisplayTurn(turnMessages: Message[]) {
+    // ...
+  }
+}
+```
+
+如果耦合子方法只是很薄的单一调用方 helper，仍优先内联回主方法，不要为了组成静态 class 而保留无收益的拆分。
+
 如果存在静态常量，先判断引用次数和语义收益。只有被多处稳定复用，或表达外部协议、复杂业务边界且抽离能降低阅读成本时，才抽到当前目录下的 `enum.ts`。只有一处引用的 enum、`const`、`as const` 对象、延迟时间、阈值、固定 key、状态值等，默认直接耦合在使用处。
 
 如果存在类型定义，先判断它是否应该从 React 主文件中移出。确认值得剥离时，先按项目类型文件规则和现有目录模式决定落点；项目没有约束时，再使用同目录 `{源文件名}.d.ts`，例如 `ChatComponent.tsx` 对应 `ChatComponent.d.ts`。
