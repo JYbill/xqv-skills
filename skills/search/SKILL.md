@@ -1,6 +1,6 @@
 ---
 name: search
-description: 按问题场景使用 Context7 CLI 和 Exa WebSearch MCP 检索并回答。用户要求查询库、框架、SDK、CLI、云服务或 API 文档时，先完整读取 find-docs skill，再按其说明调用 Context7 CLI；用户要求联网搜索官网、博客、新闻、产品信息、对比资料或其他开放网页资料时使用 Exa。这个 skill 不处理本地文件检索或代码托管仓库任务。
+description: 按问题场景使用 Context7 CLI 和 Exa WebSearch MCP 检索并回答。用户要求查询库、框架、SDK、CLI、云服务或 API 文档时，先完整读取 find-docs skill，再按其说明调用 Context7 CLI；用户要求联网搜索官网、博客、新闻、产品信息、对比资料或其他开放网页资料时使用 Exa；find-docs、Context7 CLI 或 Exa WebSearch 不可用时，回退到 Agent 官方 Web Search 工具。这个 skill 不处理本地文件检索或代码托管仓库任务。
 ---
 
 # search
@@ -27,11 +27,11 @@ GitHub 仓库、issue、PR、commit、release、workflow 或源码核对？
   |
   v
 库、框架、SDK、CLI、云服务或 API 文档？
-  |-- 是 --> 完整读取 find-docs skill，按其说明使用 Context7 CLI
+  |-- 是 --> 完整读取 find-docs skill，按其说明使用 Context7 CLI；不可用时回退到 Agent 官方 Web Search
   |
   v
 官网、博客、新闻、产品信息、价格规格、对比资料或最新网页？
-  |-- 是 --> 使用 Exa WebSearch MCP
+  |-- 是 --> 使用 Exa WebSearch MCP；不可用时回退到 Agent 官方 Web Search
   |
   v
 无法判断来源 --> 先澄清；能合理默认时说明默认后继续
@@ -42,6 +42,7 @@ GitHub 仓库、issue、PR、commit、release、workflow 或源码核对？
 - 先判断用户要的是“技术文档”还是“开放网页资料”。
 - 能用 Context7 查到的库文档，不用 Exa 代替。
 - 需要最新网页、官方公告、博客、产品信息或跨来源对比时，用 Exa。
+- `find-docs`、Context7 CLI 或 Exa WebSearch 不可用、缺失或调用失败时，回退到 Agent 官方 Web Search 工具，不凭已有知识补全时效性或版本敏感事实。
 - 全部检索在当前上下文中完成，不把检索任务委派给 subagent 或 Agent。
 - 本地文件工具只用于定位并读取 `find-docs` skill，不用来替代外部检索。
 - 查不到就说明未查到，不把猜测写成事实。
@@ -61,7 +62,7 @@ GitHub 仓库、issue、PR、commit、release、workflow 或源码核对？
 3. 严格按 `find-docs` 的流程调用 Context7 CLI，完成库解析和文档查询。
 4. 用查到的文档事实回答，并标明来自哪个库或文档主题。
 
-`find-docs` 是 Context7 CLI 查询流程的单一事实源。本 skill 不复制它的命令、参数和认证细节。找不到 `find-docs` 或 CLI 调用失败时，明确说明失败原因，不改用 Context7 MCP 或 Exa 猜测技术文档答案。
+`find-docs` 是 Context7 CLI 查询流程的单一事实源。本 skill 不复制它的命令、参数和认证细节。找不到 `find-docs`、Context7 CLI 不可用或调用失败时，回退到 Agent 官方 Web Search 工具，并优先检索该技术的官方文档；不要改用 Context7 MCP 或 Exa 猜测技术文档答案。
 
 不要用 Context7 查新闻、博客、产品宣传页、社区讨论或仓库内部实现细节。
 
@@ -78,6 +79,8 @@ GitHub 仓库、issue、PR、commit、release、workflow 或源码核对？
 2. 需要对比时，再补充高可信第三方来源。
 3. 打开能支持结论的页面，不只依赖搜索摘要。
 4. 回答保留可回溯链接，并区分事实、网页说法和自己的判断。
+
+Exa WebSearch MCP 不可用、缺失或调用失败时，回退到 Agent 官方 Web Search 工具，并继续遵守上述来源优先级和页面核验要求。
 
 不要用 Exa 代替 Context7 查询库 API 细节；除非官方文档不在 Context7 或用户明确要求网页来源。
 
