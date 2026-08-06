@@ -3,12 +3,14 @@
 变更：
 
 - `package.json` 增加或更新 `"type": "module"`。
-- `tsconfig.json` 增加或更新 `"verbatimModuleSyntax": true`。
+- `package.json` 的 TypeScript 相关脚本和依赖已与目标版本对齐。
+- `tsconfig.json` 已按 Node.js 原生 TypeScript + TypeScript 7 ESM 基线设置。
 - 修复类型导入和类型导出，按需使用 `import type` / `export type`。
 
 验证：
 
 - 已运行 `<实际类型检查命令>`。
+- TypeScript 版本：`<pnpm exec tsc --version 的输出>`。
 - 类型检查结果：<通过 / 仍有非本范围错误>。
 
 注意：

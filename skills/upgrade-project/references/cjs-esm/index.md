@@ -19,12 +19,13 @@
 默认目标很明确：
 
 1. 在 `package.json` 中将 `type` 设置为 `module`。
-2. 在 TypeScript 配置的 `compilerOptions` 中将 `verbatimModuleSyntax` 设置为 `true`。
-3. 让所有只作为类型使用的导入都使用 `import type` 或内联 `type` 标记。
-4. 迁移后运行一次类型检查。
-5. 如果类型检查暴露大量 `import type` 相关错误，按文件或目录分片，安排尽可能多的子代理并行修复。
+2. 将 TypeScript 相关脚本和依赖升级到当前基线：Node.js `>=26.0.0`、`@types/node ^26.1.2`、`typescript ^7.0.2`。
+3. 将 `tsconfig.json` 设置为 Node.js 原生运行 TypeScript、TypeScript 7 只做类型检查的 ESM 配置。
+4. 让所有只作为类型使用的导入都使用 `import type` 或内联 `type` 标记。
+5. 迁移后确认实际使用 TypeScript 7，并运行一次类型检查。
+6. 如果类型检查暴露大量 `import type` 相关错误，按文件或目录分片，安排尽可能多的子代理并行修复。
 
-`package.json` 片段见同目录 `package.md`，`tsconfig.json` 片段见 `tsconfig.md`，类型导入示例见 `imports.md`，类型导出示例见 `exports.md`，类型检查命令见 `typecheck.md`，子代理任务模板见 `subagent.md`，汇报模板见 `report.md`。
+`package.json` 模板见同目录 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，类型导入示例见 `imports.md`，类型导出示例见 `exports.md`，类型检查命令见 `typecheck.md`，子代理任务模板见 `subagent.md`，汇报模板见 `report.md`。
 
 ## 默认迁移边界
 
@@ -33,7 +34,8 @@
 默认要做：
 
 - 修改 `package.json` 的 `type` 为 `module`。
-- 修改 TypeScript 配置，加入或更新 `compilerOptions.verbatimModuleSyntax` 为 `true`。
+- 将 `package.json` 的 TypeScript 类型检查脚本、`@types/node`、`typescript` 和 `engines.node` 更新到模板基线。
+- 按 `tsconfig.md` 更新 Node.js ESM 的 TypeScript 7 配置。
 - 修复类型导入：`import type`、`export type`、`import { type Foo }`。
 - 运行类型检查并根据错误继续修复。
 
@@ -57,10 +59,13 @@
 读取 package.json 和 tsconfig.json
         │
         ▼
-写入 package.json: "type": "module"
+更新 package.json: ESM 声明、类型检查脚本和 TypeScript 依赖
         │
         ▼
-写入 tsconfig.json: compilerOptions.verbatimModuleSyntax = true
+按 TypeScript 7 基线更新 tsconfig.json
+        │
+        ▼
+确认 pnpm exec tsc --version 为 7.x
         │
         ▼
 运行类型检查
@@ -96,13 +101,15 @@
 
 ### package.json
 
-如果没有 `type` 字段，新增 `"type": "module"`。如果已有 `"type": "commonjs"`，改成 `"type": "module"`。具体片段见同目录 `package.md`。
+如果没有 `type` 字段，新增 `"type": "module"`。如果已有 `"type": "commonjs"`，改成 `"type": "module"`。同时按 `package.md` 对齐 `typecheck`、`typecheck:watch`、`@types/node`、`typescript` 和 `engines.node`。
 
-不要因为本步骤顺手改脚本、依赖或发布字段。除非用户明确要求，本迁移只关心模块类型声明。
+只修改 TypeScript 运行与类型检查直接相关的脚本、依赖和 Node.js 版本声明；不要顺手更新测试、lint、格式化、构建或业务依赖。
 
 ### tsconfig.json
 
-在 `compilerOptions` 中设置 `verbatimModuleSyntax: true`。具体片段见同目录 `tsconfig.md`。
+按同目录 `tsconfig.md` 设置 TypeScript 7 基线。核心约束包括 `module: "NodeNext"`、`moduleResolution: "NodeNext"`、`noEmit: true`、`allowImportingTsExtensions: true`、`erasableSyntaxOnly: true` 和 `verbatimModuleSyntax: true`。
+
+这个模板面向 Node.js 26 原生执行 `.ts` 文件，不生成 JavaScript。如果目标项目仍需把 TypeScript 编译到 `dist/`，不要机械套用 `noEmit`、`allowImportingTsExtensions` 和 `.ts` 导入扩展名；先按真实构建链路调整。
 
 如果项目使用 `extends` 继承多个 TypeScript 配置，先确认当前项目实际执行类型检查时使用哪一个配置文件。优先修改项目自己的主 `tsconfig.json`；如果仓库约定使用 `tsconfig.build.json` 或类似文件做类型检查，则按实际命令涉及的配置处理，并在汇报里说明。
 
@@ -148,11 +155,10 @@ package.json 是否有 scripts.typecheck？
         └─ 没有
             │
             ▼
-           当前项目能否执行 tsgo？
+           使用项目本地 TypeScript 7
             │
-            ├─ 能：使用 tsgo --noEmit
-            │
-            └─ 不能：使用 tsc --noEmit
+            ▼
+           pnpm exec tsc --noEmit
 ```
 
 具体命令模板见同目录 `typecheck.md`。
@@ -212,14 +218,16 @@ package.json 是否有 scripts.typecheck？
 迁移完成后至少确认：
 
 - `package.json` 存在 `"type": "module"`。
-- 相关 TypeScript 配置存在 `"verbatimModuleSyntax": true`。
+- `package.json` 的 `typecheck`、`typecheck:watch`、`@types/node`、`typescript` 和 `engines.node` 已与模板或目标项目版本对齐。
+- `pnpm exec tsc --version` 显示 TypeScript 7.x。
+- TypeScript 配置符合 `tsconfig.md` 的 Node.js ESM 基线。
 - 只作为类型使用的导入已经改为 `import type` 或内联 `type`。
 - 类型导出已经按需改为 `export type`。
 - 运行时值导入没有被误改成 `import type`。
-- 已运行项目自己的 `typecheck`；如果没有，则已运行 `tsgo --noEmit` 或 `tsc --noEmit`。
+- 已运行项目自己的 `typecheck`；如果没有，则已运行 `pnpm exec tsc --noEmit`。
 - 类型检查通过，或剩余错误明确不属于本次 CJS 到 ESM 迁移范围。
 - 未混入测试框架、代码检查器、构建系统、发布字段等非本阶段改动。
 
 ## 模板文件
 
-`package.json` 片段见同目录 `package.md`，`tsconfig.json` 片段见 `tsconfig.md`，类型导入示例见 `imports.md`，类型导出示例见 `exports.md`，类型检查命令见 `typecheck.md`，子代理任务模板见 `subagent.md`，汇报模板见 `report.md`。
+`package.json` 模板见同目录 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，类型导入示例见 `imports.md`，类型导出示例见 `exports.md`，类型检查命令见 `typecheck.md`，子代理任务模板见 `subagent.md`，汇报模板见 `report.md`。

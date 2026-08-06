@@ -4,14 +4,14 @@
 pnpm typecheck
 ```
 
-没有 `typecheck` 脚本时再尝试：
-
-```bash
-pnpm exec tsgo --noEmit
-```
-
-如果没有 `tsgo`，使用：
+没有 `typecheck` 脚本时，使用当前项目安装的 TypeScript 7：
 
 ```bash
 pnpm exec tsc --noEmit
+```
+
+确认命令实际加载的是项目本地依赖，而不是全局旧版本：
+
+```bash
+pnpm exec tsc --version
 ```
