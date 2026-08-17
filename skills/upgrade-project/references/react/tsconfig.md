@@ -27,6 +27,13 @@ CSR React + Vite 项目默认使用一个 `tsconfig.json`。如果目标项目�
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "vite.config.ts", "oxlint.config.ts", "oxfmt.config.ts"]
+  "include": [
+    "src",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "test",
+    "oxlint.config.ts",
+    "oxfmt.config.ts"
+  ]
 }
 ```
