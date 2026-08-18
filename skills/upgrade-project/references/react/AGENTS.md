@@ -44,6 +44,11 @@
         │
         ▼
 使用 oxlint、oxfmt 对未提交文件进行格式化与 lint 检测
+        │
+        ▼
+结合本次代码改动，将最新业务流程和模块实现整理到对应 docs/spec/ 文档
+        │
+        └──────────────→ 下一次任务读取最新 docs/spec/，继续上述流程
 ```
 
 ## 页面浏览与视觉验证
@@ -61,6 +66,20 @@
 - 只有用户明确要求拆分、抽象、封装或复用时，才进行对应拆分。
 - 禁止替用户预设未来步骤、未来需求或未来扩展路径，并据此新增结构、文件或流程。
 - 必须使用支持 tree shaking 的导入方式，优先具名导入或默认导入；禁止使用 `import * as xxx` 全量导入，除非第三方包不支持按需导入。
+- `util` 文件中存在明确主从调用关系的紧密相关方法时，必须使用同一个静态 class 组织为静态方法，不得平铺为多个顶层函数。例如：
+
+```ts
+export class CopilotDisplayMessageUtil {
+  static buildCopilotDisplayMessages(messages: Message[]) {
+    // ...
+    return this.buildDisplayTurn(messages)
+  }
+
+  private static buildDisplayTurn(turnMessages: Message[]) {
+    // ...
+  }
+}
+```
 
 ## 测试规范
 
@@ -76,6 +95,7 @@
 
 ## 文件名规范
 
+- 原文件专属的校验文件使用 `{原文件}.schema.ts`，并与原文件放在同级目录。
 - 源文件专属的枚举、常量映射和稳定字面量集合使用 `{源文件}.enum.ts`；目录级稳定枚举允许使用 `enum.ts`。
 - 源文件专属工具函数使用 `{源文件}.util.ts`；目录级工具函数允许使用 `util.ts`。
 - 组件目录内禁止在一个文件中塞多个组件；`index.tsx` 作为主组件入口，其余子组件必须抽到同级子组件文件，文件名使用首字母大写的驼峰命名方式，且子组件文件名和组件名不重复父目录或主组件前缀。
