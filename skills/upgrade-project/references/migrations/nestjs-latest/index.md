@@ -5,6 +5,7 @@
 当用户要求把 NestJS 后台项目升级到最新版本，或明确提到以下内容时，使用这份参考：
 
 - NestJS 升级、`nestjs latest`、`@nestjs/*` 升级；
+- `useGlobalPipes()`、`ValidationPipe`、class-validator DTO、class-transformer、mapped types 或 Standard Schema；
 - `source-map-support`、`--enable-source-maps`、Node.js source map；
 - `package.json` 的 `start`、`typecheck` 脚本，以及需要移除的 `start:prod` 脚本；
 - `pm2.config.cjs` 的 Node.js 启动参数；
@@ -14,7 +15,20 @@
 - Vitest 项目中清理 `tsconfig-paths`；
 - 将一次 NestJS 升级经验沉淀成可复用流程。
 
-这份参考默认面向 TypeScript NestJS 服务端项目。默认只升级 NestJS 相关直接依赖、NestJS 构建配置（含 SWC builder / `.swcrc`）和本文件列出的运行脚本、类型检查、Prisma 7 `prisma-client` 生成器扩展配置、测试路径插件清理；Dockerfile 只在用户明确要求时按 `x86-debian.Dockerfile` 模板同步。不顺手迁移 lint、format、ESM 或业务代码。
+这份参考默认面向 TypeScript NestJS 服务端项目。默认只升级 NestJS 相关直接依赖、NestJS 构建配置（含 SWC builder / `.swcrc`）和本文件列出的运行脚本、类型检查、Prisma 7 `prisma-client` 生成器扩展配置、测试路径插件清理；Dockerfile 只在用户明确要求时按 `x86-debian.Dockerfile` 模板同步。不顺手迁移 lint、format、ESM 或业务代码，也不把 Standard Schema 当作 NestJS 12 的强制迁移项。
+
+## 版本路由与校验迁移门禁
+
+开始升级前必须先搜索并统计：
+
+- `useGlobalPipes()` 和全局、Controller、路由级 `ValidationPipe`；
+- `class-validator`、`class-transformer`、`@nestjs/mapped-types` 的直接依赖与源码引用；
+- class DTO 及各 Controller 的 `@Body()`、`@Query()`、`@Param()`、`@RawBody()` 校验现状；
+- 已经使用的 Standard Schema、Zod Schema 和响应 serializer。
+
+只要检测到全局 `ValidationPipe`，且用户没有明确授权迁移校验体系，就先报告影响路由数量和语义差异，并询问是否全量迁移到 `StandardSchemaValidationPipe` + Zod。确认前不得替换全局 Pipe、批量改 DTO、引入迁移代码，或移除旧校验依赖。用户选择保留现状时，只完成 NestJS 与相关依赖的兼容升级，并记录未迁移原因。
+
+用户原始需求已经明确采用 Zod Standard Schema 时，视为确认完成。确认全量迁移后，必须同时处理全局 Pipe、全部受影响路由的 schema metadata、环境变量、旧依赖和测试，不能只改 `main.ts`。从 NestJS 11 升级到 12 时继续读取 `../nestjs-v11-v12/index.md`；其他版本组合先查官方迁移指南，再补对应版本专题。
 
 ## 迁移目标
 
@@ -31,6 +45,7 @@
 9. 如果项目已经是 Vitest，移除 `tsconfig-paths` 直接依赖以及只服务于 Jest/ts-node 测试链路的残留引用。
 10. 更新锁文件，并运行项目已有验证命令。
 11. 如果用户明确要求同步 Dockerfile，以 `x86-debian.Dockerfile` 作为 NestJS 服务镜像模板。
+12. 校验体系是否迁移取决于上面的用户确认结果；保留现状也是允许的升级结果。
 
 NestJS 目标配置统一放在 `../../frameworks/nestjs/index.md`，包括 `package.md`、`tsconfig.md`、`nest-cli.md`、`swcrc.md`、`pm2.md`、`prisma-client.md` 和 `dockerfile.md`。本 migration 同目录只保留迁移过程资料：`dependencies.md`、`source-map-support.md`、`tsconfig-paths.md`、`flow.md` 和 `commands.md`。后台项目测试与代码组织规则以 `../../profiles/backend/AGENTS.md` 为默认模板正文。
 
@@ -39,6 +54,7 @@ NestJS 目标配置统一放在 `../../frameworks/nestjs/index.md`，包括 `pac
 默认要做：
 
 - 检查 `package.json`、锁文件、`nest-cli.json`、`.swcrc`、NestJS 配置、Prisma schema / config、测试框架配置和启动入口。
+- 盘点全局 Pipe、class DTO、校验依赖和全部 Controller 参数，记录是否需要向用户确认校验迁移。
 - 升级已经存在的 `@nestjs/*` 直接依赖，例如 `@nestjs/common`、`@nestjs/core`、`@nestjs/platform-*`、`@nestjs/config`、`@nestjs/swagger`、`@nestjs/testing`、`@nestjs/cli`、`@nestjs/schematics` 等。
 - 移除 `source-map-support`、`@types/source-map-support` 直接依赖，以及 `import "source-map-support/register"`、`require("source-map-support/register")`、`sourceMapSupport.install()` 等注册代码。
 - 将 `scripts.start` 设置为 `node --enable-source-maps dist/main.js`，并删除 `scripts.start:prod`；其它项目既有、直接用 `node` 运行编译产物的脚本也要确保带 `--enable-source-maps`，但不要新增 `start:prod`。
@@ -61,6 +77,7 @@ NestJS 目标配置统一放在 `../../frameworks/nestjs/index.md`，包括 `pac
 - 不修改 Prisma datasource、model、迁移文件或生成产物来掩盖生成器配置问题。
 - 不为了通过类型检查使用 `any`、`unknown`、`as any` 或 `as unknown as ...`。
 - 不修改业务逻辑来掩盖框架升级问题；先判断是否是依赖、类型或配置问题。
+- 用户没有明确确认时，不把 `ValidationPipe` / class DTO 改成 Standard Schema，也不移除相关依赖。
 
 ## 复杂判断方式
 
@@ -136,7 +153,7 @@ NestJS 目标配置统一放在 `../../frameworks/nestjs/index.md`，包括 `pac
 以 pnpm 项目为例，其他包管理器按锁文件替换命令。
 
 1. 检查当前工作区是否有未提交改动，避免覆盖用户已有修改。
-2. 读取 `package.json`、锁文件、`nest-cli.json`、`.swcrc`、`pm2.config.cjs`、`prisma.config.ts` 和 `schema.prisma`：
+2. 读取 `package.json`、锁文件、`nest-cli.json`、`.swcrc`、`pm2.config.cjs`、`prisma.config.ts` 和 `schema.prisma`，并盘点全局 Pipe、校验依赖、class DTO 和 Controller 参数：
    - `dependencies` / `devDependencies` 中的 `@nestjs/*`、`source-map-support`、`@types/source-map-support`、`tsconfig-paths`、`@swc/core`、`@swc/cli`、`@swc/helpers`；
    - `scripts.start`、是否存在需要删除的 `scripts.start:prod`、`scripts.typecheck`、`scripts.build`、`scripts.test`；
    - 所有直接使用 `node` 运行 `dist` 编译产物的脚本；
@@ -145,25 +162,30 @@ NestJS 目标配置统一放在 `../../frameworks/nestjs/index.md`，包括 `pac
    - `.swcrc` 的 NestJS 装饰器元数据配置、`module.type`、`module.ignoreDynamic`、`jsc.externalHelpers`；
    - `schema.prisma` 的 `generator client` 是否使用 `provider = "prisma-client"`，以及是否设置 `moduleFormat`、`generatedFileExtension`、`importFileExtension`；
    - 是否有 `jest` 字段或测试相关脚本。
-3. 判断包管理器：优先按 `pnpm-lock.yaml`、`package-lock.json`、`yarn.lock`、`bun.lockb`。
-4. 升级已有 NestJS 直接依赖到 latest，保持 dependencies / devDependencies 分区，不随意新增不在项目中的 NestJS 包。
-5. 移除 `source-map-support` 直接依赖和注册代码。
-6. 将 `scripts.start` 设置为 `node --enable-source-maps dist/main.js`，删除 `scripts.start:prod`；其它项目既有、直接使用 `node` 运行 `dist` 编译产物的脚本要加上 `--enable-source-maps`，但不要新增 `start:prod`。
-7. 如果存在 `pm2.config.cjs` 且应用通过 PM2 启动编译产物，确保对应应用配置包含 `node_args: "--enable-source-maps"`。
-8. 确保 `scripts.typecheck` 为 `tsc --noEmit`。如果已有但不一致，改到目标值并在汇报里说明原值。
-9. 确保 `nest-cli.json` 的 `compilerOptions.deleteOutDir` 为 `true`。
-10. 如果项目使用 SWC builder，确保 `nest-cli.json` 的 `compilerOptions.builder.type` 为 `"swc"`，`options.swcrcPath` 为 `".swcrc"`，并按 `../../frameworks/nestjs/swcrc.md` 同步根目录 `.swcrc`。如果 `.swcrc` 使用 `externalHelpers: true`，确认 `@swc/helpers` 运行时依赖可用。
-11. 如果项目使用 Prisma 7 的 `prisma-client` 生成器，并且生成的 TypeScript Client 会随 NestJS SWC / TypeScript 编译到 `dist`，按 `../../frameworks/nestjs/prisma-client.md` 同步 `schema.prisma` 的 `moduleFormat`、`generatedFileExtension`、`importFileExtension`，然后重新运行 `prisma generate`。
-12. 判断当前项目是否是 Vitest：
+3. 如果存在全局 `ValidationPipe`，按“版本路由与校验迁移门禁”确认用户选择；用户原始需求已明确授权时不用重复询问。
+4. 判断包管理器：优先按 `pnpm-lock.yaml`、`package-lock.json`、`yarn.lock`、`bun.lockb`。
+5. 升级已有 NestJS 直接依赖到 latest，保持 dependencies / devDependencies 分区，不随意新增不在项目中的 NestJS 包。
+6. 移除 `source-map-support` 直接依赖和注册代码。
+7. 将 `scripts.start` 设置为 `node --enable-source-maps dist/main.js`，删除 `scripts.start:prod`；其它项目既有、直接使用 `node` 运行 `dist` 编译产物的脚本要加上 `--enable-source-maps`，但不要新增 `start:prod`。
+8. 如果存在 `pm2.config.cjs` 且应用通过 PM2 启动编译产物，确保对应应用配置包含 `node_args: "--enable-source-maps"`。
+9. 确保 `scripts.typecheck` 为 `tsc --noEmit`。如果已有但不一致，改到目标值并在汇报里说明原值。
+10. 确保 `nest-cli.json` 的 `compilerOptions.deleteOutDir` 为 `true`。
+11. 如果项目使用 SWC builder，确保 `nest-cli.json` 的 `compilerOptions.builder.type` 为 `"swc"`，`options.swcrcPath` 为 `".swcrc"`，并按 `../../frameworks/nestjs/swcrc.md` 同步根目录 `.swcrc`。如果 `.swcrc` 使用 `externalHelpers: true`，确认 `@swc/helpers` 运行时依赖可用。
+12. 如果项目使用 Prisma 7 的 `prisma-client` 生成器，并且生成的 TypeScript Client 会随 NestJS SWC / TypeScript 编译到 `dist`，按 `../../frameworks/nestjs/prisma-client.md` 同步 `schema.prisma` 的 `moduleFormat`、`generatedFileExtension`、`importFileExtension`，然后重新运行 `prisma generate`。
+13. 判断当前项目是否是 Vitest：
 
 - `package.json` 有 `vitest` 依赖或脚本；
 - 存在 `vitest.config.*`；
 - 测试代码从 `vitest` 导入 API。
 
-13. 如果是 Vitest，移除 `tsconfig-paths` 直接依赖，并清理只属于 Jest/ts-node 测试链路的引用。Vitest / Vite 的路径别名应使用项目已有的 `resolve.tsconfigPaths` 或 Vite 配置方式。
-14. 更新锁文件。
-15. 如果用户明确要求同步 Dockerfile，按 `../../frameworks/nestjs/dockerfile.md` 的 `x86-debian.Dockerfile` 模板更新项目 Dockerfile；不要把 registry、推送脚本或部署流程混入本阶段。
-16. 运行验证命令：优先 `typecheck`、`build`，再运行本次影响相关的测试。命令失败时，保留失败输出并判断是否属于本次迁移范围。
+14. 如果是 Vitest，移除 `tsconfig-paths` 直接依赖，并清理只属于 Jest/ts-node 测试链路的引用。Vitest / Vite 的路径别名应使用项目已有的 `resolve.tsconfigPaths` 或 Vite 配置方式。
+15. 更新锁文件。
+16. 如果用户明确要求同步 Dockerfile，按 `../../frameworks/nestjs/dockerfile.md` 的 `x86-debian.Dockerfile` 模板更新项目 Dockerfile；不要把 registry、推送脚本或部署流程混入本阶段。
+17. 运行验证命令：优先 `typecheck`、`build`，再运行本次影响相关的测试。命令失败时，保留失败输出并判断是否属于本次迁移范围。
+
+## 最终报告
+
+最终报告必须记录：是否检测到全局 `ValidationPipe`、用户选择、实际迁移范围、未迁移项及原因。还要列出 NestJS 目标版本、主要兼容处理、依赖与锁文件状态、实际执行的验证及未通过项；不得把未经验证的命令写成已通过。
 
 ## source-map-support 处理
 

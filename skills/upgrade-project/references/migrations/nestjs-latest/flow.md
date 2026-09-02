@@ -1,6 +1,23 @@
 当需要解释为什么删除或保留某个依赖时，使用 ASCII 图 + 描述。
 
 ```text
+盘点全局 Pipe、DTO、校验依赖和 Controller 参数
+        │
+        ▼
+是否检测到全局 ValidationPipe？
+        ├─ 否：按目标版本继续升级
+        └─ 是
+            │
+            ▼
+           用户是否已明确授权迁移到 Standard Schema + Zod？
+            ├─ 否：报告影响并询问；确认前保留原校验体系
+            ├─ 选择保留：只做 NestJS / 依赖兼容升级并记录原因
+            └─ 选择迁移：同步全局 Pipe、路由 Schema、环境变量、依赖和测试
+```
+
+Standard Schema 是 NestJS 12 提供的新能力，不是强制迁移项。不能仅替换全局 Pipe，因为没有提供 `schema` metadata 的 Controller 参数不会因此自动获得 Zod 校验。
+
+```text
 发现 tsconfig-paths
         │
         ▼

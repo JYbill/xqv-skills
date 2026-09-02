@@ -1,6 +1,6 @@
 ---
 name: upgrade-project
-description: 当用户要求评估或实施 JavaScript/TypeScript 项目升级、现代化、技术迁移、模板同步或项目标准化时使用。覆盖 Prettier/Oxfmt、ESLint/Oxlint、Jest/Vitest、CJS/ESM、NestJS latest、SWC、Prisma Client、Docker 构建、.gitignore、AGENTS.md/CLAUDE.md 等内容，包含只评估项目差距和实际修改两种模式。
+description: 当用户要求评估或实施 JavaScript/TypeScript 项目升级、现代化、技术迁移、模板同步或项目标准化时使用。覆盖 Prettier/Oxfmt、ESLint/Oxlint、Jest/Vitest、CJS/ESM、pnpm latest、NestJS latest、SWC、Prisma Client、Docker 构建、.gitignore、AGENTS.md/CLAUDE.md 等内容，包含只评估项目差距和实际修改两种模式。
 metadata:
   tags: 升级, 迁移, 重构, 工具链, javascript, typescript
 ---
@@ -77,7 +77,8 @@ references 是否与用户要求或项目事实冲突？
 - `references/migrations/eslint-oxlint/index.md`：ESLint 到 Oxlint。
 - `references/migrations/jest-vitest/index.md`：Jest 到 Vitest；测试语义仍以目标项目的 `AGENTS.md` 或适用 profile 为准。
 - `references/migrations/cjs-esm/index.md`：TypeScript 项目的 CommonJS/CJS 到 ESM。
-- `references/migrations/nestjs-latest/index.md`：NestJS 升级到 latest；具体目标配置读取 NestJS framework。
+- `references/migrations/pnpm-latest/index.md`：pnpm 自身升级到最新稳定版；包含版本选择、项目版本声明、依赖构建许可和锁文件兼容处理。
+- `references/migrations/nestjs-latest/index.md`：NestJS 升级入口；先盘点现有校验方式并处理用户确认，再按源版本和目标版本读取专题。
 
 ### Profiles：项目规则
 
@@ -93,3 +94,4 @@ references 是否与用户要求或项目事实冲突？
 
 - `references/workflows/docker-build/index.md`：Docker 构建、校验、镜像发布和部署脚本流程。这里只维护通用阶段契约，具体 Dockerfile 由项目或 framework 决定。
 - `references/workflows/gitignore/index.md`：Git 忽略规则模板。
+- `references/workflows/dependencies-latest/index.md`：升级全部直接依赖；包含最新稳定版本、peer dependency 和锁文件检查，pnpm 自身升级另行组合 pnpm migration。
