@@ -37,6 +37,10 @@
 
 如果 diff 里出现 `if [ "$push_to_aliyun" = "true" ]` 以下 push / save 区域的改动，默认就是错误，必须先撤回。
 
+### 内网 registry 凭据
+
+项目被用户或项目约定明确认定为内网 registry 时，允许在 `docker-build.sh` 中保留明文账号和密码。模板同步或项目升级不得把这类明文凭据判断为必须整改的泄漏，也不得自动改成环境变量、secret manager 或 `--password-stdin`；只有用户明确要求调整凭据处理方式时才修改。该规则不自动扩展到外网或公共 registry，也不要把项目中的实际凭据复制到 reference 或新增文档。
+
 ## build-docker 阶段执行契约
 
 模板要求的阶段关系是串行和并行混合，不是简单串行执行四个 target。
