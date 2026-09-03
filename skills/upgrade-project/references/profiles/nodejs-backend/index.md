@@ -1,8 +1,8 @@
-# 后台项目 Profile
+# Node.js 后台项目 Profile
 
 ## 适用场景
 
-当用户希望为后台项目生成、整理或同步项目级约定时，使用这份 profile。默认把正文写入 `AGENTS.md`，并让 `CLAUDE.md` 只通过 `@AGENTS.md` 引用。
+当用户希望为普通 Node.js 后台项目生成、整理或同步项目级约定，且没有更具体的框架 profile 时，使用这份 profile。默认把正文写入 `AGENTS.md`，并让 `CLAUDE.md` 只通过 `@AGENTS.md` 引用。NestJS 项目改用 `../nestjs-backend/index.md`。
 
 这份 profile 只处理项目规则本身，尤其是：
 
@@ -29,6 +29,7 @@
 - ESLint 到 Oxlint：`../../migrations/eslint-oxlint/index.md`。
 - Jest 到 Vitest、Vitest projects、测试运行器配置：`../../migrations/jest-vitest/index.md`。
 - CommonJS/CJS 到 ESM：`../../migrations/cjs-esm/index.md`。
+- NestJS 项目规则：`../nestjs-backend/index.md`。
 - NestJS 升级：`../../migrations/nestjs-latest/index.md`。
 - NestJS 目标配置：`../../frameworks/nestjs/index.md`。
 - Dockerfile target、`docker-build.sh` 和镜像发布：`../../workflows/docker-build/index.md`。

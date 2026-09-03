@@ -1,5 +1,5 @@
 ```dockerfile
-FROM --platform=linux/amd64 node:26.3-slim AS base
+FROM --platform=linux/amd64 node:26-slim AS base
 WORKDIR /app
 RUN . /etc/os-release && \
   echo "deb http://mirrors.aliyun.com/debian/ ${VERSION_CODENAME} main" > /etc/apt/sources.list && \
@@ -25,6 +25,7 @@ RUN pnpm config list
 RUN pnpm install --frozen-lockfile && pnpm store prune
 COPY prisma.config.ts .
 COPY prisma prisma
+COPY env env
 RUN pnpm prisma:generate
 COPY . .
 
@@ -64,7 +65,6 @@ COPY --from=build /app/.npmrc .
 COPY --from=build /app/pnpm-lock.yaml .
 COPY --from=build /app/pnpm-workspace.yaml .
 RUN pnpm install --prod --frozen-lockfile && pnpm store prune
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/pm2.config.cjs .
 COPY --from=build /app/dist dist
 

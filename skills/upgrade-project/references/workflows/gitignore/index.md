@@ -27,6 +27,7 @@
 5. **不要忽略源码和规范文件。** 不要为了减少噪音忽略 `src/`、`docs/spec/`、`AGENTS.md`、`CLAUDE.md` 等应被版本管理的项目资产；除非项目明确把某类过程性文档视为本地工作区，如当前模板中的 `docs/plan/`。
 6. **AI/agent 本地目录默认忽略。** `.ai`、`.aiassistant`、`.sisyphus`、`.opencode`、`.claude/settings.local.json`、`.claude/worktree` 等本地工作状态不应入库。
 7. **不要隐藏锁文件差异。** 当前模板忽略 `package-lock.json` 是因为项目使用 pnpm；迁移到 npm 项目时不要保留这一项，应改为保留 `package-lock.json` 并按实际包管理器忽略无关锁文件。
+8. **区分 Prisma 生成物与迁移。** Prisma 7 `prisma-client` 输出到源码目录时忽略生成目录，例如 `/src/library/prisma/generate`；`prisma/migrations` 属于应提交资产，不加入忽略规则。
 
 ## 推荐执行流程
 
@@ -54,6 +55,7 @@
 - 环境变量文件、TLS 文件和本地运行状态不会被提交。
 - 上传目录、日志目录和临时目录如果需要占位，保留了 `.gitkeep` 例外规则。
 - 当前项目使用的包管理器锁文件不会被错误忽略。
+- Prisma Client 自动生成目录按项目实际 output 被忽略，`prisma/migrations` 没有被误忽略。
 - 没有把源码、标准文档、配置样例或需要入库的规范文件误加入忽略规则。
 - `.dockerignore` 需求没有混入 `.gitignore`，需要 Docker 构建排除时读取 `../docker-build/index.md`。
 

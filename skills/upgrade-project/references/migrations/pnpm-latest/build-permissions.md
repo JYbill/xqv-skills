@@ -29,4 +29,3 @@ allowBuilds:
 - Docker 和 CI 必须与本地读取同一份 `pnpm-workspace.yaml`，否则依赖构建结果可能不一致。
 
 迁移完成后重新执行普通安装和 frozen lockfile 安装，确认没有未审查构建脚本，也没有因为错误拒绝必要的二进制或生成步骤。
-

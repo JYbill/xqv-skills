@@ -115,12 +115,15 @@ Dockerfile 必须按目标项目选择，不能把 NestJS 的镜像结构当作 
 
 ## `.dockerignore` 约定
 
-`.dockerignore` 使用同目录 `dockerignore.md` 的模板，覆盖不同后台项目常见的本地配置、缓存、文档、测试、agent/AI 工作目录和环境目录。
+`.dockerignore` 使用同目录 `dockerignore.md` 的模板，覆盖不同后台项目常见的本地配置、缓存、文档、agent/AI 工作目录和构建无关文件。私有化项目的测试与构建需要 `env/` 或 `src/env/` 时，模板默认允许这些目录进入构建上下文。
 
 注意：
 
-- 模板默认排除 `env` / `src/env`，不要把环境目录复制进镜像。
-- 如果 Dockerfile 明确需要这些目录，先确认不包含敏感信息，再移除对应忽略项并说明原因。
+- `install` 阶段执行 `COPY . .` 后，`format`、`lint`、`test` 和 `build` 可以复用环境目录，不需要为每个 target 重复复制。
+- `production` 优先从干净的 runtime / base 阶段开始，只复制生产依赖、编译产物和启动配置，不复制整个 build 工作目录；最终镜像不得保留 `/app/env` 或 `/app/src/env`。
+- Prisma Client 在 Docker build 内生成并随源码编译时，排除宿主机的生成目录，例如 `src/library/prisma/generate/`；不要因此排除 `prisma/` schema 或 migration。
+- 如果现有 Dockerfile 必须继承 build 阶段或整体复制工作目录，在最终阶段显式移除环境目录，并验证最终镜像；优先改成干净阶段和选择性复制。
+- 干净 CI checkout 中不存在被 Git 忽略的环境文件时，构建流程必须在 `docker build` 前准备这些文件。
 - `.dockerignore` 和 `.gitignore` 是两类文件，不要混成一份规则。
 
 ## `package.json` 脚本约定
@@ -174,7 +177,7 @@ Dockerfile 必须按目标项目选择，不能把 NestJS 的镜像结构当作 
 - `docker-build.sh` 的阶段顺序符合 `install -> (format -> lint) & test -> production`。
 - `docker-build.sh` 没有改动 push / save / registry 登录 / tag 生成 / 参数解析等非构建阶段代码。
 - `deploy:docker` 如存在，指向统一的 `docker-build.sh` 入口。
-- `.dockerignore` 已按模板排除常见本地配置、缓存、文档、测试、agent/AI 工作目录、环境目录和构建无关文件。
+- `.dockerignore` 已按模板排除常见本地配置、缓存、文档、agent/AI 工作目录和构建无关文件；构建需要的环境目录可以进入校验阶段，但最终 production 镜像不含 `/app/env` 或 `/app/src/env`。
 - `install`、`format`、`lint`、`test` target 调用项目真实的依赖安装和校验命令。
 - `build`、`coverage-report` 等非通用 target 只在项目真实需要时存在。
 - `production` target 使用项目实际产物和启动命令；若启动编译后的 Node.js 产物，source map 参数符合 `pm2-contract.md` 或等价启动约定。

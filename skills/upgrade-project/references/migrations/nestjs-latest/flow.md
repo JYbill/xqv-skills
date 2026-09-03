@@ -41,24 +41,23 @@ Standard Schema 是 NestJS 12 提供的新能力，不是强制迁移项。不�
 ```
 
 ```text
-发现 Prisma 7 prisma-client generator
+发现 Prisma 7 Client
         │
         ▼
-生成的 TS Client 是否会被编译到 dist？
+是否仍使用 prisma-client-js、node_modules/.prisma 输出或 .prisma/client 私有导入？
         │
-        ├─ 否：本次不处理
-        │
-        └─ 是
+        ├─ 是：按 framework 完整迁移 provider、源码 output 和应用导入
+        └─ 否：检查现有 prisma-client
             │
             ▼
-           是否已显式配置 importFileExtension = "js"？
+           生成的 TS Client 是否会被编译到 dist，且已显式配置 ESM / .js import？
             │
-            ├─ 是：保留
-            └─ 否：补齐 moduleFormat / generatedFileExtension / importFileExtension
+            ├─ 否：按项目事实保留
+            └─ 是：同步 adapter、生成目录排除项、Docker 和运行 smoke
 ```
 
 描述示例：
 
 ```markdown
-当前项目使用 Prisma 7 `prisma-client` 生成器，生成的 Client 会随 NestJS SWC 编译到 `dist`。为了避免运行期 `client.js` 继续 import `./internal/class.ts`，本次只补齐 `schema.prisma` 的生成器扩展配置，不修改 datasource、model 或生成产物。
+当前项目仍把 Prisma Client 生成到 `node_modules/.prisma/client` 并从私有路径导入。按照 NestJS Prisma framework，将它完整迁移为源码目录中的 ESM TypeScript Client，同步应用导入、MariaDB adapter、生成目录排除项和 production 镜像；不修改 datasource model 或 migration。
 ```

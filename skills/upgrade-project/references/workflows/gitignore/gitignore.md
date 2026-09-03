@@ -51,6 +51,10 @@ build/Release
 
 node_modules
 
+# Prisma generated TypeScript Client
+
+/src/library/prisma/generate
+
 # Builds
 
 .nar

@@ -1,4 +1,6 @@
-# NestJS 12 Standard Schema 与 Zod
+# NestJS Standard Schema 与 Zod
+
+Standard Schema 是 NestJS 12 提供的新能力，不是升级到 v12 的强制条件。只有用户明确授权迁移校验体系后才执行下面的变更；用户选择保留现状时继续使用 `ValidationPipe` 和 class DTO，并在最终报告中记录原因。
 
 ## 请求校验
 

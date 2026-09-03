@@ -2,6 +2,8 @@
 .husky
 .cache
 node_modules/
+dist/
+src/library/prisma/generate/
 .git/
 .idea/
 alter-table
@@ -37,12 +39,4 @@ docker-compose.yaml
 docker.compose.yaml
 AGENTS.md
 skills-lock.json
-
-# legacy env
-
-src/env
-
-# env
-
-env
 ```

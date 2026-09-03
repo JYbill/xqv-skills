@@ -7,7 +7,7 @@
 ## 所有权边界
 
 - NestJS latest 的升级步骤、依赖清理和验收流程见 `../../migrations/nestjs-latest/index.md`。
-- 后台项目的命令、测试分层、类型和代码组织规则以 `../../profiles/backend/AGENTS.md` 为唯一模板正文。
+- NestJS 项目的命令、Schema、测试分层、类型和代码组织规则以 `../../profiles/nestjs-backend/AGENTS.md` 为模板正文。
 - Docker 构建阶段、`docker-build.sh`、镜像 tag、push 和 save 流程见 `../../workflows/docker-build/index.md`。
 - 本目录拥有 NestJS 的具体 Dockerfile 和 PM2 模板。Koa、Express 或其他后台框架应维护自己的模板，不能直接套用 NestJS 文件。
 
@@ -17,7 +17,7 @@
 - `tsconfig.md`：NodeNext、装饰器元数据和构建输出相关 TypeScript 配置。
 - `nest-cli.md`：Nest CLI 与 SWC builder 配置。
 - `swcrc.md`：NestJS 装饰器和元数据所需 SWC 配置。
-- `prisma-client.md`：Prisma 7 `prisma-client` 生成器在 ESM 编译产物中的扩展名配置。
+- `prisma-client.md`：Prisma 7 从 `prisma-client-js` 私有生成目录迁移到源码目录内的 ESM TypeScript Client，并同步合法导入、adapter、忽略规则、Docker 和运行验证。
 - `pm2.md`：NestJS 编译产物的 PM2 启动模板。
 - `dockerfile.md`：当前 NestJS 服务的具体多阶段 Dockerfile 模板。
 

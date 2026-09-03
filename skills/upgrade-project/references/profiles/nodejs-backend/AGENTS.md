@@ -2,7 +2,7 @@
 
 - 运行时：<Node.js 版本或其他运行时>。
 - 包管理器：<pnpm / npm / yarn / bun>。
-- 服务框架：<NestJS / Express / Fastify / 其他>。
+- 服务框架：<Express / Fastify / Koa / 其他 Node.js 框架>。
 - 数据与基础设施：<Prisma / 数据库 / Redis / 队列 / 向量库等>。
 - 代码质量工具：<TypeScript / Oxlint / Oxfmt / Vitest 等>。
 

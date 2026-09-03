@@ -37,7 +37,7 @@
 
 ## 测试分层要求
 
-迁移前先读取目标项目 `AGENTS.md` 的测试要求，并原样保留其测试语义。目标项目采用后台 profile 时，以 `../../profiles/backend/AGENTS.md` 为默认模板正文。
+迁移前先读取目标项目 `AGENTS.md` 的测试要求，并原样保留其测试语义。NestJS 项目读取 `../../profiles/nestjs-backend/AGENTS.md`，其他 Node.js 后台项目读取 `../../profiles/nodejs-backend/AGENTS.md`。
 
 本 migration 只负责文件收集范围、Vitest projects、测试 API 和运行器命令，不重新规定集成测试是否允许 mock、是否必须访问真实外部依赖、e2e 使用哪些数据，或新增模块应补哪类测试。目标项目规则与这里的示例文件布局不一致时，以目标项目规则为准。
 

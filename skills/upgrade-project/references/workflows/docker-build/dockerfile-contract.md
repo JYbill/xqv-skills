@@ -14,6 +14,8 @@ Docker 构建 workflow 不拥有一份适用于所有后台项目的 Dockerfile�
 
 项目存在编译产物时可以提供 `build` target，并让 `production` 通过 `FROM build` 或 `COPY --from=build` 形成依赖；项目直接运行源码时不要虚构 `build` target。`docker-build.sh` 构建 `production` 时会由 Docker 自动构建其依赖阶段。
 
+构建阶段需要 `env/` 或 `src/env/` 时，`production` 优先从干净的 runtime / base 阶段开始并选择性复制运行产物。若项目必须继承 build 阶段或整体复制工作目录，进入最终镜像前必须移除环境目录；不能让测试和构建配置随 production 产物保留。
+
 ```text
 install
   ├─ format -> lint

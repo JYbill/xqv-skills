@@ -78,11 +78,12 @@ references 是否与用户要求或项目事实冲突？
 - `references/migrations/jest-vitest/index.md`：Jest 到 Vitest；测试语义仍以目标项目的 `AGENTS.md` 或适用 profile 为准。
 - `references/migrations/cjs-esm/index.md`：TypeScript 项目的 CommonJS/CJS 到 ESM。
 - `references/migrations/pnpm-latest/index.md`：pnpm 自身升级到最新稳定版；包含版本选择、项目版本声明、依赖构建许可和锁文件兼容处理。
-- `references/migrations/nestjs-latest/index.md`：NestJS 升级入口；先盘点现有校验方式并处理用户确认，再按源版本和目标版本读取专题。
+- `references/migrations/nestjs-latest/index.md`：NestJS 升级的唯一入口；先盘点现有校验方式并处理用户确认，再在同一目录读取依赖、Standard Schema 和验证资料。
 
 ### Profiles：项目规则
 
-- `references/profiles/backend/index.md`：后台项目 profile。任务涉及 `AGENTS.md`、`CLAUDE.md`、后台项目命令、测试分层或代码组织规则时读取；其中 `AGENTS.md` 是后台项目规则的唯一模板正文。
+- `references/profiles/nodejs-backend/index.md`：普通 Node.js 后台项目 profile。任务涉及框架无关的 `AGENTS.md`、`CLAUDE.md`、测试分层或代码组织规则时读取。
+- `references/profiles/nestjs-backend/index.md`：NestJS 后台项目 profile。维护 NestJS 项目的完整规则模板，包括用户采用 Standard Schema 后的长期 Schema 约定。
 - `references/profiles/react-csr/index.md`：CSR React 项目规则 profile，只维护 `AGENTS.md`、`CLAUDE.md` 和前端项目需要的 skill 约定。
 
 ### Frameworks：目标配置
