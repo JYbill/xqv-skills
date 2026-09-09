@@ -36,6 +36,8 @@ FROM install AS lint
 RUN pnpm lint
 
 FROM install AS test
+# 测试进程按上海时区处理本地日期，避免容器默认时区导致日期偏移。
+ENV TZ=Asia/Shanghai
 RUN pnpm test:cov
 
 FROM scratch AS coverage-report
