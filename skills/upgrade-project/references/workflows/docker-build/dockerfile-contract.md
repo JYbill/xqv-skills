@@ -27,6 +27,12 @@ install
 
 可选的 `coverage-report` 等 target 属于项目能力，不能成为 workflow 的强制接口。
 
+## 公共层与排查工具
+
+Debian Node 镜像参考具体模板同步以下配置：从 `package.json#packageManager` 安装项目指定的 pnpm；生产阶段安装 `bash`、`vim`、`curl`、`procps`、`linux-perf`，并配置 UTF-8 和 `.vimrc`。`ffmpeg` 等业务依赖按目标项目需要加入。依赖安装涉及 `patches/`、`vendor/` 时，在构建和生产安装依赖前分别复制所需目录。
+
+采用 `CHECK_FILES` 时，format / lint target 声明该构建参数；非空时检查指定文件，为空时执行项目全量命令。调用脚本需显式传入 `--build-arg CHECK_FILES="..."`。lint 继承 format 可保留格式化结果，test 继续独立继承 install。具体命令见框架模板。
+
 ## 选择具体模板
 
 先识别目标项目框架和现有 Dockerfile，再选择对应 framework 模板。NestJS 的当前具体模板见 `../../frameworks/nestjs/dockerfile.md`。没有对应 framework 模板时，以项目事实为基础新增或调整，不能借用 NestJS 模板冒充通用模板。

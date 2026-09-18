@@ -1,5 +1,9 @@
+# NestJS Dockerfile 模板
+
+以 `wzj-nodejs-v2` 的 `x86-debian.Dockerfile` 为基础同步公共阶段、包管理器和排查工具；NestJS 保留 Prisma 生成、`build` 和 `dist` 生产入口。
+
 ```dockerfile
-FROM --platform=linux/amd64 node:26-slim AS base
+FROM --platform=linux/amd64 node:26.3-slim AS base
 WORKDIR /app
 RUN . /etc/os-release && \
   echo "deb http://mirrors.aliyun.com/debian/ ${VERSION_CODENAME} main" > /etc/apt/sources.list && \
@@ -12,7 +16,9 @@ RUN apt-get update && \
   apt-get autoclean && \
   apt-get autoremove -y && \
   rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
-RUN npm install -g pnpm && npm cache clean -f
+# 从项目清单读取 pnpm 精确版本，构建和生产阶段共用。
+COPY package.json .
+RUN npm install -g "$(node -p 'require("./package.json").packageManager')" && npm cache clean -f
 
 FROM base AS install
 COPY package.json .
@@ -30,10 +36,22 @@ RUN pnpm prisma:generate
 COPY . .
 
 FROM install AS format
-RUN pnpm format
+ARG CHECK_FILES=""
+RUN if [ -n "$CHECK_FILES" ]; then \
+  set -f; \
+  pnpm exec oxfmt --config oxfmt.config.ts $CHECK_FILES; \
+  else \
+  pnpm run format; \
+  fi
 
-FROM install AS lint
-RUN pnpm lint
+FROM format AS lint
+ARG CHECK_FILES=""
+RUN if [ -n "$CHECK_FILES" ]; then \
+  set -f; \
+  pnpm exec oxlint --config oxlint.config.ts --fix --no-error-on-unmatched-pattern $CHECK_FILES; \
+  else \
+  pnpm run lint; \
+  fi
 
 FROM install AS test
 # 测试进程按上海时区处理本地日期，避免容器默认时区导致日期偏移。
@@ -53,7 +71,7 @@ ENV NODE_ENV=production
 ENV LANG=C.utf8
 ENV LC_ALL=C.utf8
 RUN apt-get update && \
-  apt-get install -y --no-install-recommends bash vim curl procps && \
+  apt-get install -y --no-install-recommends bash vim curl procps linux-perf && \
   apt-get clean && \
   apt-get autoclean && \
   apt-get autoremove -y && \
@@ -74,6 +92,15 @@ COPY --from=build /app/dist dist
 EXPOSE 3000
 CMD ["pm2-runtime", "pm2.config.cjs"]
 ```
+
+## 按目标项目适配
+
+- Node 镜像版本和平台以目标项目为准；`package.json#packageManager` 必须声明项目使用的 pnpm 精确版本。
+- 生产阶段包含 `bash`、`vim`、`curl`、`procps`、`linux-perf` 排查工具。源 Dockerfile 的 `ffmpeg` 属于业务依赖，仅在目标项目需要音视频处理时加入。
+- 项目依赖 `patches/` 或 `vendor/` 时，在 install 和 production 两处执行 `pnpm install` 前复制对应目录；目录不存在时不要添加 `COPY`。
+- `CHECK_FILES` 为按空白分隔的文件列表，非空时仅校验指定文件，为空时执行全量 format / lint。传参方使用 `--build-arg CHECK_FILES="..."`，并保证文件名不含空白；路径、配置文件和命令选项以目标项目为准。
+- `lint` 继承 `format`，使格式化结果进入代码检查阶段；test 独立继承 install。
+- 直接运行 TypeScript 源码的项目按实际入口复制源码及运行资源，不套用 NestJS 的 Prisma、build 和 dist 步骤。
 
 ## 配套 `.vimrc`
 
