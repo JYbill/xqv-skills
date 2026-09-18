@@ -48,6 +48,7 @@ RUN pnpm build
 
 FROM base AS production
 WORKDIR /app
+COPY .vimrc /root/.vimrc
 ENV NODE_ENV=production
 ENV LANG=C.utf8
 ENV LC_ALL=C.utf8
@@ -73,3 +74,16 @@ COPY --from=build /app/dist dist
 EXPOSE 3000
 CMD ["pm2-runtime", "pm2.config.cjs"]
 ```
+
+## 配套 `.vimrc`
+
+使用上面的 Dockerfile 时，在项目根目录创建并提交 `.vimrc`，内容如下；确认 `.dockerignore` 没有排除该文件，否则 `COPY` 会失败。
+
+```vim
+set encoding=utf-8
+set fileencodings=utf-8
+set fileencoding=utf-8
+set mouse-=a
+```
+
+编码统一使用 UTF-8，不加入 `ucs-bom`、`cp936` 或 `gb2312`。不设置 `termencoding`，沿用 `encoding`。模板按 root 用户将配置复制到 `/root/.vimrc`；项目使用其他用户时，调整为实际用户的 home 目录，并确认该用户可读取配置。

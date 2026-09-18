@@ -19,6 +19,6 @@
 - `swcrc.md`：NestJS 装饰器和元数据所需 SWC 配置。
 - `prisma-client.md`：Prisma 7 从 `prisma-client-js` 私有生成目录迁移到源码目录内的 ESM TypeScript Client，并同步合法导入、adapter、忽略规则、Docker 和运行验证。
 - `pm2.md`：NestJS 编译产物的 PM2 启动模板。
-- `dockerfile.md`：当前 NestJS 服务的具体多阶段 Dockerfile 模板。
+- `dockerfile.md`：当前 NestJS 服务的具体多阶段 Dockerfile 模板及配套 UTF-8 `.vimrc`。
 
 落地模板前必须核对项目的 Node.js 版本、包管理器、输出入口、系统依赖、Prisma 使用方式、运行端口和进程管理器。模板是目标基线，不覆盖已经验证过的项目差异。
