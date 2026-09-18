@@ -27,16 +27,17 @@
 
 `package.json` 模板见同目录 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，类型导入示例见 `imports.md`，类型导出示例见 `exports.md`，类型检查命令见 `typecheck.md`，子代理任务模板见 `subagent.md`。
 
-## 默认迁移边界
+## 迁移范围与不处理事项
 
-默认只做 TypeScript ESM 基础迁移和类型导入修复。
+默认只调整模块声明、模块解析、导入导出和 CJS 专属用法，使项目源码符合既有运行方式下的 ESM 要求。保留工具链版本、构建方式、产物目录和启动入口，不把切换到原生执行 TypeScript 当作 ESM 迁移的一部分。
 
 默认要做：
 
 - 修改 `package.json` 的 `type` 为 `module`。
 - 按需补充 TypeScript 类型检查脚本，保留依赖版本和 Node.js 版本声明。
 - 按 `tsconfig.md` 选择与现有工具链兼容的 ESM 配置。
-- 修复类型导入：`import type`、`export type`、`import { type Foo }`。
+- 修复源码导入导出、相对导入扩展名和 CJS 专属用法；类型使用 `import type`、`export type` 或 `import { type Foo }`。
+- 只读检查构建与启动配置是否仍兼容 ESM；需要范围外修改时记录具体阻塞，不自动改造。
 - 运行类型检查并根据错误继续修复。
 
 默认不要顺手做：
@@ -73,7 +74,7 @@
         ├─ 通过
         │   │
         │   ▼
-        │  汇报完成
+        │  检查模块兼容性，汇报结果与范围外阻塞
         │
         └─ 失败
             │
@@ -109,9 +110,16 @@
 
 按同目录 `tsconfig.md` 核对现有编译器支持的 ESM 配置。Node.js 项目使用 `module: "NodeNext"`、`moduleResolution: "NodeNext"`，并按编译器支持情况启用 `verbatimModuleSyntax`；保留既有产物输出和运行方式。
 
-其中 Node.js 26 / TypeScript 7 配置仅作为已明确采用原生执行 `.ts` 的可选示例，不是迁移前提。如果目标项目仍需把 TypeScript 编译到 `dist/`，不要机械套用 `noEmit`、`allowImportingTsExtensions` 和 `.ts` 导入扩展名；先按真实构建链路调整。
+不默认添加 `noEmit`、`allowImportingTsExtensions` 或 `erasableSyntaxOnly`。这些选项不属于通用 ESM 要求；保留项目既有配置，并根据实际模块解析规则选择导入扩展名。
 
 如果项目使用 `extends` 继承多个 TypeScript 配置，先确认当前项目实际执行类型检查时使用哪一个配置文件。优先修改项目自己的主 `tsconfig.json`；如果仓库约定使用 `tsconfig.build.json` 或类似文件做类型检查，则按实际命令涉及的配置处理，并在汇报里说明。
+
+## 源码模块兼容性
+
+- 按实际用途调整 `require`、`module.exports`、`exports` 等 CJS 写法，避免机械替换影响加载时机和默认导出语义；必要的 CJS 互操作按目标运行时能力保留。
+- 排查 `__dirname`、`__filename` 等 CJS 专属变量，按项目支持的 Node.js 版本采用兼容的 ESM 写法。
+- 相对导入扩展名必须对应实际运行模块：编译后运行 JavaScript 的项目通常使用 `.js`；已经直接运行 TypeScript 的项目按现有执行器规则处理，不统一改为 `.ts`。
+- 检查 `type: module` 是否改变现有 `.js` 配置文件的解释方式。构建配置、工具配置或启动入口因此不兼容时，列出具体文件、影响和必要改动，交由对应任务处理，不把仅通过类型检查表述为完整迁移可运行。
 
 ## 类型导入修复规则
 
@@ -226,7 +234,9 @@ package.json 是否有 scripts.typecheck？
 - 运行时值导入没有被误改成 `import type`。
 - 已运行项目自己的 `typecheck`；如果没有，则已运行 `pnpm exec tsc --noEmit`。
 - 类型检查通过，或剩余错误明确不属于本次 CJS 到 ESM 迁移范围。
-- 未混入测试框架、代码检查器、构建系统、发布字段等非本阶段改动。
+- 已检查源码 CJS 残留、相对导入扩展名及模块互操作；必要保留项有明确原因。
+- 已检查构建与启动配置的兼容性；未验证运行时应明确说明，存在阻塞时不得宣称完整迁移完成。
+- 未改变构建方式、产物目录和启动入口，未混入测试框架、代码检查器、构建系统、发布字段等非本阶段改动。
 
 ## 模板文件
 

@@ -1,30 +1,19 @@
 # tsconfig.json 模板
 
-默认保留目标项目的运行时、编译器版本和构建方式，仅调整兼容的 ESM 选项。下面是已明确采用 Node.js 26 原生运行 TypeScript、TypeScript 7 只做类型检查时的可选示例，不要求其他项目升级到这些版本。仍编译到 `dist/` 的项目应保留输出配置与 `.js` 导入扩展名，不套用 `noEmit`、`allowImportingTsExtensions` 或 `erasableSyntaxOnly`。
-
-对于该原生执行示例，`noEmit` 与 `allowImportingTsExtensions` 配套，因此源码中的相对导入可以显式写 `.ts` 扩展名。
-
-`customConditions`、路径别名和宽松检查项属于具体项目配置，不放进通用模板；迁移时按目标项目事实保留。
+按项目已有运行方式和当前 TypeScript 版本，只调整 ESM 相关选项。以下是 Node.js 模块解析的合并示例，不是完整配置；使用前确认本地编译器支持这些选项。不适用于直接覆盖打包器专用配置。
 
 ```json
 {
   "compilerOptions": {
-    "rootDir": ".",
-    "incremental": true,
-    "tsBuildInfoFile": ".cache/.tsbuildinfo",
-    "strict": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "target": "ESNext",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "allowImportingTsExtensions": true,
-    "noEmit": true,
-    "types": ["node"],
-    "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true
-  },
-  "include": ["./src/**/*.ts", "./test/**/*.ts"],
-  "exclude": ["node_modules"]
+  }
 }
 ```
+
+保留现有 `target`、`rootDir`、`outDir`、`include`、`exclude`、路径别名和检查严格程度，不调整构建产物与入口。
+
+不因 ESM 迁移增加 `noEmit`、`allowImportingTsExtensions` 或 `erasableSyntaxOnly`，也不要求切换到 Node.js 原生执行 TypeScript。相对导入扩展名按实际运行模块选择：编译后运行 JavaScript 时通常使用 `.js`；已有源码执行方式按其现有规则保留。
+
+当前编译器不支持所需选项时，记录兼容性问题并确定适用配置，不在本参考内自动升级工具链。
