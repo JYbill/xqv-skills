@@ -1,6 +1,6 @@
 # vitest.config.ts 模板
 
-基础 React 测试使用 jsdom，并通过 `test/setup/vitest.setup.ts` 加载 Testing Library matcher。`oxc.target` 按目标项目实际 Node.js 版本调整。
+基础 React 测试使用 jsdom，并通过 `test/setup/vitest.setup.ts` 加载 Testing Library matcher。`oxc.target` 与配套 package 模板的最低 Node.js 版本 26 对齐，落地时按目标项目支持的最低版本调整。
 
 ```ts
 import { fileURLToPath, URL } from 'node:url'

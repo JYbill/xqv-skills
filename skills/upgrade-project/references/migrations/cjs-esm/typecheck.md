@@ -4,7 +4,7 @@
 pnpm typecheck
 ```
 
-没有 `typecheck` 脚本时，使用当前项目安装的 TypeScript 7：
+没有 `typecheck` 脚本时，使用当前项目安装的 TypeScript：
 
 ```bash
 pnpm exec tsc --noEmit

@@ -28,7 +28,7 @@
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
-    "@types/node": "^24.13.2",
+    "@types/node": "^26.0.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@typescript/native-preview": "7.0.0-dev.20260624.1",
@@ -44,7 +44,7 @@
     "vitest": "^4.0.18"
   },
   "engines": {
-    "node": ">=24"
+    "node": ">=26"
   }
 }
 ```

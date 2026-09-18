@@ -23,3 +23,9 @@ pnpm test:watch
 ```bash
 pnpm exec vitest run --project e2e
 ```
+
+确认 e2e 所需隔离环境可用后，通过 e2e project 一次运行单元、集成和端到端测试并统计覆盖率；不同时选择 test project：
+
+```bash
+pnpm exec vitest run --coverage --project e2e
+```

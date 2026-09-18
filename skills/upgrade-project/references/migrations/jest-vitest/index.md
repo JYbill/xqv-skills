@@ -56,7 +56,7 @@ test/debug/*.debug.ts        # 手动调试脚本，不纳入常规自动化测�
 推荐 project 划分：
 
 - `test` project：运行 `src/**/*.spec.ts` 和 `src/**/*.integration-spec.ts`，也是 `package.json` 中 `test` / `test:watch` / `test:cov` 的目标。
-- `e2e` project：运行 `src/**/*.spec.ts`、`src/**/*.integration-spec.ts` 和 `test/**/*.e2e-spec.ts`，用于统计普通测试与 e2e 共同产生的覆盖率；同时关闭文件级并行，避免多个 e2e 同时抢占共享应用、数据库或端口资源。
+- `e2e` project：包含 `src/**/*.spec.ts`、`src/**/*.integration-spec.ts` 和 `test/**/*.e2e-spec.ts`，用于运行完整测试并统计共同覆盖率；关闭文件级并行，避免共享资源冲突。这是约定的完整测试入口，包含普通测试是预期行为。运行完整测试时只选择 `e2e`，不同时选择 `test`，避免普通测试跨 project 重复执行。
 - 顶层 `test.include` 设置为 `[]`，避免 root suite 和 project suite 重复收集测试文件。
 - 覆盖率排除测试文件本身，例如 `src/**/*.spec.ts`、`src/**/*.integration-spec.ts`。
 
@@ -156,7 +156,7 @@ Vitest 4.1 + Vite 8 下，TS/JS transform 应显式走 OXC。处理顺序：
 
 ### 4. e2e 并发导致共享资源冲突
 
-e2e 测试高度依赖专用外部服务和测试数据，可能共用影子 MySQL 数据库、Langfuse Dataset、应用实例或端口。优先在 `e2e` project 中关闭文件级并行，不要把这个设置扩大到所有普通单元测试，除非普通测试也确实存在共享资源问题。
+e2e 测试高度依赖专用外部服务和测试数据，可能共用影子 MySQL 数据库、Langfuse Dataset、应用实例或端口。在 `e2e` project 中关闭文件级并行，其中包含的单元和集成测试也按完整测试入口串行执行；独立的 `test` project 保留正常并行设置。
 
 ### 5. 顶层 include 导致测试重复运行
 

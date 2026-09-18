@@ -19,10 +19,10 @@
 默认目标很明确：
 
 1. 在 `package.json` 中将 `type` 设置为 `module`。
-2. 将 TypeScript 相关脚本和依赖升级到当前基线：Node.js `>=26.0.0`、`@types/node ^26.1.2`、`typescript ^7.0.2`。
-3. 将 `tsconfig.json` 设置为 Node.js 原生运行 TypeScript、TypeScript 7 只做类型检查的 ESM 配置。
+2. 保留目标项目的 Node.js、TypeScript 和 `@types/node` 版本，按需补充类型检查脚本；工具链升级只在明确属于本次范围时进行。
+3. 按现有运行和构建方式调整 ESM 配置；不因模块迁移自动切换到 Node.js 原生运行 TypeScript。
 4. 让所有只作为类型使用的导入都使用 `import type` 或内联 `type` 标记。
-5. 迁移后确认实际使用 TypeScript 7，并运行一次类型检查。
+5. 确认实际使用项目本地 TypeScript，并运行一次类型检查。
 6. 如果类型检查暴露大量 `import type` 相关错误，按文件或目录分片，安排尽可能多的子代理并行修复。
 
 `package.json` 模板见同目录 `package.md`，`tsconfig.json` 模板见 `tsconfig.md`，类型导入示例见 `imports.md`，类型导出示例见 `exports.md`，类型检查命令见 `typecheck.md`，子代理任务模板见 `subagent.md`。
@@ -34,8 +34,8 @@
 默认要做：
 
 - 修改 `package.json` 的 `type` 为 `module`。
-- 将 `package.json` 的 TypeScript 类型检查脚本、`@types/node`、`typescript` 和 `engines.node` 更新到模板基线。
-- 按 `tsconfig.md` 更新 Node.js ESM 的 TypeScript 7 配置。
+- 按需补充 TypeScript 类型检查脚本，保留依赖版本和 Node.js 版本声明。
+- 按 `tsconfig.md` 选择与现有工具链兼容的 ESM 配置。
 - 修复类型导入：`import type`、`export type`、`import { type Foo }`。
 - 运行类型检查并根据错误继续修复。
 
@@ -59,13 +59,13 @@
 读取 package.json 和 tsconfig.json
         │
         ▼
-更新 package.json: ESM 声明、类型检查脚本和 TypeScript 依赖
+更新 package.json: ESM 声明和类型检查脚本
         │
         ▼
-按 TypeScript 7 基线更新 tsconfig.json
+按现有运行和构建方式更新 tsconfig.json
         │
         ▼
-确认 pnpm exec tsc --version 为 7.x
+确认 pnpm exec tsc --version 与项目依赖一致
         │
         ▼
 运行类型检查
@@ -101,15 +101,15 @@
 
 ### package.json
 
-如果没有 `type` 字段，新增 `"type": "module"`。如果已有 `"type": "commonjs"`，改成 `"type": "module"`。同时按 `package.md` 对齐 `typecheck`、`typecheck:watch`、`@types/node`、`typescript` 和 `engines.node`。
+如果没有 `type` 字段，新增 `"type": "module"`。如果已有 `"type": "commonjs"`，改成 `"type": "module"`。同时按 `package.md` 补充 `typecheck`、`typecheck:watch`，保留既有版本声明。
 
-只修改 TypeScript 运行与类型检查直接相关的脚本、依赖和 Node.js 版本声明；不要顺手更新测试、lint、格式化、构建或业务依赖。
+模块格式迁移不自动授权升级 Node.js、TypeScript 或其他依赖；不要顺手更新测试、lint、格式化、构建或业务依赖。
 
 ### tsconfig.json
 
-按同目录 `tsconfig.md` 设置 TypeScript 7 基线。核心约束包括 `module: "NodeNext"`、`moduleResolution: "NodeNext"`、`noEmit: true`、`allowImportingTsExtensions: true`、`erasableSyntaxOnly: true` 和 `verbatimModuleSyntax: true`。
+按同目录 `tsconfig.md` 核对现有编译器支持的 ESM 配置。Node.js 项目使用 `module: "NodeNext"`、`moduleResolution: "NodeNext"`，并按编译器支持情况启用 `verbatimModuleSyntax`；保留既有产物输出和运行方式。
 
-这个模板面向 Node.js 26 原生执行 `.ts` 文件，不生成 JavaScript。如果目标项目仍需把 TypeScript 编译到 `dist/`，不要机械套用 `noEmit`、`allowImportingTsExtensions` 和 `.ts` 导入扩展名；先按真实构建链路调整。
+其中 Node.js 26 / TypeScript 7 配置仅作为已明确采用原生执行 `.ts` 的可选示例，不是迁移前提。如果目标项目仍需把 TypeScript 编译到 `dist/`，不要机械套用 `noEmit`、`allowImportingTsExtensions` 和 `.ts` 导入扩展名；先按真实构建链路调整。
 
 如果项目使用 `extends` 继承多个 TypeScript 配置，先确认当前项目实际执行类型检查时使用哪一个配置文件。优先修改项目自己的主 `tsconfig.json`；如果仓库约定使用 `tsconfig.build.json` 或类似文件做类型检查，则按实际命令涉及的配置处理，并在汇报里说明。
 
@@ -155,7 +155,7 @@ package.json 是否有 scripts.typecheck？
         └─ 没有
             │
             ▼
-           使用项目本地 TypeScript 7
+           使用项目本地 TypeScript
             │
             ▼
            pnpm exec tsc --noEmit
@@ -218,8 +218,8 @@ package.json 是否有 scripts.typecheck？
 迁移完成后至少确认：
 
 - `package.json` 存在 `"type": "module"`。
-- `package.json` 的 `typecheck`、`typecheck:watch`、`@types/node`、`typescript` 和 `engines.node` 已与模板或目标项目版本对齐。
-- `pnpm exec tsc --version` 显示 TypeScript 7.x。
+- 类型检查脚本可用，`@types/node`、`typescript` 和 `engines.node` 保持原值，或其升级明确属于本次任务范围。
+- `pnpm exec tsc --version` 与目标项目本地依赖一致。
 - TypeScript 配置符合 `tsconfig.md` 的 Node.js ESM 基线。
 - 只作为类型使用的导入已经改为 `import type` 或内联 `type`。
 - 类型导出已经按需改为 `export type`。
