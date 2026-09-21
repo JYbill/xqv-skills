@@ -21,9 +21,9 @@ bridge 对唯一可执行候选直接操作并交回验收，多个候选才请�
 
 ### jev-curl
 
-用于通过 curl 调用 TypeSafe 官方 Jev API，完成候选选择、是非判断和评分。直接读取执行环境中的 `TYPESAFE_API_KEY`，无需 SDK 或 MCP。
+用于设计 TypeSafe／Jev 功能，将语义判断拆成候选选择、是非判断和评分，由代码组合结果，并通过 curl 调用官方 HTTP API。直接读取执行环境中的 `TYPESAFE_API_KEY`，无需 SDK 或 MCP。
 
-正文保留调用步骤、认证与错误处理；请求示例和三种问题的返回格式放在 `references/http.md`，构造请求时按需读取。浏览器控制由 `jev-codex-browser-use` 处理。
+正文保留设计流程、调用约束与验证要求；复杂问题设计、分支预判、分阶段依赖及评分复用等方法放在 `references/design-patterns.md`，请求示例和返回格式保留在 `references/http.md`，按任务需要读取。浏览器控制由 `jev-codex-browser-use` 处理。
 
 ### kysely-schema
 
