@@ -13,11 +13,17 @@
 
 通用判断流程保留在 `SKILL.md`；React 专项规则位于 `references/react/index.md`，Node.js 后台专项规则位于 `references/nodejs/index.md`。执行前应先读取目标仓库的 `CLAUDE.md`、`AGENTS.md` 和相关模块说明，项目内更具体的规范优先。
 
+### jev-codex-computer-use
+
+用于在 Codex Computer Use 中分配直接 CUA 操作与 Jev 连续浏览器决策：已确定的操作直接执行，需要根据页面选择路径时才交给 Jev。Codex 负责文字输入、异常接管和独立验收；接管后重新判断是否需要 Jev，不因已有会话或任务未完成而自动续调。新子目标使用独立的 Jev 历史。
+
+bridge 对唯一可执行候选直接操作并交回验收，多个候选才请求 Jev，无候选交回检查。自带 `scripts/bridge.mjs` 和配置说明，可独立替代 `jev-browser-use`；优先读取新配置，并兼容旧配置路径。接口示例见 `references/runtime.md`。Jev 部分支持 Chrome 和内置浏览器，不提供原生桌面应用控制。
+
 ### jev-curl
 
 用于通过 curl 调用 TypeSafe 官方 Jev API，完成候选选择、是非判断和评分。直接读取执行环境中的 `TYPESAFE_API_KEY`，无需 SDK 或 MCP。
 
-正文保留调用步骤、认证与错误处理；请求示例和三种问题的返回格式放在 `references/http.md`，构造请求时按需读取。它不承担 `jev-browser-use` 的浏览器控制职责。
+正文保留调用步骤、认证与错误处理；请求示例和三种问题的返回格式放在 `references/http.md`，构造请求时按需读取。浏览器控制由 `jev-codex-computer-use` 处理。
 
 ### kysely-schema
 
