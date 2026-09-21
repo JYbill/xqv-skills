@@ -1,9 +1,9 @@
 ---
-name: jev-codex-computer-use
+name: jev-codex-browser-use
 description: 在 Codex Computer Use 中分配直接 CUA 操作与 Jev 连续浏览器决策。适用于需要按页面状态导航、展开、切换、翻页或滚动的任务；已确定的按钮直接操作，输入与验收由 Codex 完成。内置 Jev bridge，不提供原生桌面应用的 Jev 控制。
 ---
 
-# Jev 与 Codex Computer Use
+# Jev 与 Codex 浏览器操作
 
 让 Jev 处理需要根据页面选择下一步的连续浏览器操作。Codex 负责目标、文字输入、复杂判断、授权和最终验收。CUA 是读取页面和执行操作的工具，Jev 是选择下一步的模型；调用 CUA 不等于请求 Jev。不要为了使用 Jev，把已确定的操作再交给它确认一次。
 

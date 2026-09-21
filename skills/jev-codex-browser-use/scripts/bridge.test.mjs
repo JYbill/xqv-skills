@@ -21,15 +21,15 @@ test('新配置优先，缺失时兼容旧配置，配置错误不回退', async
   const dir = await fixture(t);
   await config(dir, 'jev-browser-use', JSON.stringify({provider:'typesafe', model:'jev-old'}));
   assert.equal((await loadConfig({configDir:dir})).model, 'jev-old');
-  await config(dir, 'jev-codex-computer-use', JSON.stringify({provider:'typesafe', model:'jev-new'}));
+  await config(dir, 'jev-codex-browser-use', JSON.stringify({provider:'typesafe', model:'jev-new'}));
   assert.equal((await loadConfig({configDir:dir})).model, 'jev-new');
-  await config(dir, 'jev-codex-computer-use', '{invalid');
+  await config(dir, 'jev-codex-browser-use', '{invalid');
   await assert.rejects(loadConfig({configDir:dir}), SyntaxError);
 });
 
 test('只有新配置时可加载，不依赖旧 skill 或配置', async t => {
   const dir = await fixture(t);
-  await config(dir, 'jev-codex-computer-use', JSON.stringify({provider:'typesafe', model:'jev-latest'}));
+  await config(dir, 'jev-codex-browser-use', JSON.stringify({provider:'typesafe', model:'jev-latest'}));
   assert.equal((await loadConfig({configDir:dir})).model, 'jev-latest');
 });
 
@@ -207,3 +207,16 @@ for (const failAt of [1, 2]) {
     assert.deepEqual(f.clicks, []);
   });
 }
+
+
+test('更名前的配置仍可加载，优先于最早配置且错误不回退', async t => {
+  const dir = await fixture(t);
+  await config(dir, 'jev-browser-use', JSON.stringify({model:'jev-old'}));
+  await config(dir, 'jev-codex-computer-use', JSON.stringify({model:'jev-previous'}));
+  assert.equal((await loadConfig({configDir:dir})).model, 'jev-previous');
+  await config(dir, 'jev-codex-browser-use', JSON.stringify({model:'jev-current'}));
+  assert.equal((await loadConfig({configDir:dir})).model, 'jev-current');
+  await rm(join(dir, 'jev-codex-browser-use'), {recursive:true});
+  await config(dir, 'jev-codex-computer-use', '{invalid');
+  await assert.rejects(loadConfig({configDir:dir}), SyntaxError);
+});

@@ -4,7 +4,7 @@
 
 ## 配置路径与迁移
 
-新配置放在 `~/.config/jev-codex-computer-use/config.json`。仅当新文件不存在时，bridge 读取 `~/.config/jev-browser-use/config.json`；新文件格式错误或不可读时直接报错，不悄悄回退。
+新配置放在 `~/.config/jev-codex-browser-use/config.json`。文件不存在时，bridge 依次读取 `~/.config/jev-codex-computer-use/config.json` 和 `~/.config/jev-browser-use/config.json`；新文件格式错误或不可读时直接报错，不悄悄回退。
 
 旧路径只是配置兼容，不需要保留旧 skill 的安装目录或脚本。迁移时可把旧 JSON 原样复制到新路径，保留原来的 provider、model 和 `envFile`。不自动删除旧文件。若凭证文件位于准备删除的旧 skill 目录内，应先将它迁移到独立配置目录并更新 `envFile`，避免卸载后失效。
 

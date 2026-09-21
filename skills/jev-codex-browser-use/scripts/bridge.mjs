@@ -4,15 +4,18 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 export async function loadConfig({configDir = join(homedir(), '.config')} = {}) {
-  let content;
-  try {
-    content = await readFile(join(configDir, 'jev-codex-computer-use', 'config.json'), 'utf8');
-  } catch (error) {
-    // 仅在新配置不存在时兼容旧路径；格式、权限等错误不能被回退掩盖。
-    if (error.code !== 'ENOENT') throw error;
-    content = await readFile(join(configDir, 'jev-browser-use', 'config.json'), 'utf8');
+  const names = ['jev-codex-browser-use', 'jev-codex-computer-use', 'jev-browser-use'];
+  for (const [index, name] of names.entries()) {
+    let content;
+    try {
+      content = await readFile(join(configDir, name, 'config.json'), 'utf8');
+    } catch (error) {
+      // 仅缺失时尝试旧路径，读取或配置格式错误不能被回退掩盖。
+      if (error.code !== 'ENOENT' || index === names.length - 1) throw error;
+      continue;
+    }
+    return JSON.parse(content);
   }
-  return JSON.parse(content);
 }
 
 const providers = {

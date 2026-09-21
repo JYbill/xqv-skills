@@ -37,7 +37,7 @@ nodeRepl.write({status: outcome.status, metrics: outcome.sessionMetrics});
 
 给这一 CUA 调用设置 `timeout_ms: 60000`。读取 outcome 后用当前工具文档支持的 API 获取新页面状态并验收。需要诊断时读取 `outcome.history`、`outcome.state`、`outcome.error`，不要默认打印整页私有文本或保存 trace。
 
-`loadConfig()` 优先读取 `~/.config/jev-codex-computer-use/config.json`；仅当该文件不存在时兼容 `~/.config/jev-browser-use/config.json`。返回 `envFile`、`provider`、`model`，不返回 API key；缺少 `config.apiKey` 是正常现象。可用 `loadConfig({configDir})` 指定配置根目录，主要用于隔离测试或自定义部署。保留返回配置，不擅自覆盖；凭证由 bridge 从指定 dotenv 文件读取。配置维护见 [配置说明](provider-configuration.md)，不要输出 dotenv 或原始 HTTP 错误体。
+`loadConfig()` 优先读取 `~/.config/jev-codex-browser-use/config.json`；文件不存在时依次兼容 `~/.config/jev-codex-computer-use/config.json` 和 `~/.config/jev-browser-use/config.json`。返回 `envFile`、`provider`、`model`，不返回 API key；缺少 `config.apiKey` 是正常现象。可用 `loadConfig({configDir})` 指定配置根目录，主要用于隔离测试或自定义部署。保留返回配置，不擅自覆盖；凭证由 bridge 从指定 dotenv 文件读取。配置维护见 [配置说明](provider-configuration.md)，不要输出 dotenv 或原始 HTTP 错误体。
 
 ## 复用、换目标与等待
 
