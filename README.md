@@ -13,6 +13,12 @@
 
 通用判断流程保留在 `SKILL.md`；React 专项规则位于 `references/react/index.md`，Node.js 后台专项规则位于 `references/nodejs/index.md`。执行前应先读取目标仓库的 `CLAUDE.md`、`AGENTS.md` 和相关模块说明，项目内更具体的规范优先。
 
+### jev-curl
+
+用于通过 curl 调用 TypeSafe 官方 Jev API，完成候选选择、是非判断和评分。直接读取执行环境中的 `TYPESAFE_API_KEY`，无需 SDK 或 MCP。
+
+正文保留调用步骤、认证与错误处理；请求示例和三种问题的返回格式放在 `references/http.md`，构造请求时按需读取。它不承担 `jev-browser-use` 的浏览器控制职责。
+
 ### kysely-schema
 
 用于把 MySQL DDL 转换为 Kysely 表结构类型，并按用户要求补齐查询、插入、批量插入、更新、批量更新或 upsert 方法。处理时需要准确判断 `Generated<>`、`null`、默认值以及 camelCase 字段与 snake_case SQL 字段的映射。
