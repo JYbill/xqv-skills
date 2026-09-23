@@ -72,7 +72,7 @@
 export class CopilotDisplayMessageUtil {
   static buildCopilotDisplayMessages(messages: Message[]) {
     // ...
-    return this.buildDisplayTurn(messages)
+    return this.buildDisplayTurn(messages);
   }
 
   private static buildDisplayTurn(turnMessages: Message[]) {
@@ -83,13 +83,18 @@ export class CopilotDisplayMessageUtil {
 
 ## 测试规范
 
-- 测试文件必须使用 `{源文件名}.spec.ts` 命名。
-- 只生成有意义且必要的测试用例与测试逻辑，禁止生成无意义或无实际作用的测试用例与测试逻辑。
+- 所有测试文件的辅助函数统一放在文件最底部，位于全部测试用例和 `describe` 块之后；不要放在测试代码之前或穿插其中。
+- 每个用例和断言都应保护明确的业务规则、调用方依赖的输出、状态变化或错误处理；禁止只验证测试准备数据、复述实现、无意义存在性检查和重复防御逻辑，不为占位代码补空测试。
+- 新增、修改或运行测试前，沿用例、生命周期钩子、公共 fixture、setup 和被测代码核对实际连接、请求及副作用，再按所属测试通道判断是否允许；整组测试和覆盖率命令同样适用。无法确认时停止相关测试，改为无外部写入的验证，不能以运行后清理作为安全依据。
+- mock 用于隔离协作者，不替代正在验证的行为；模拟增删改前须确认不会透传到真实连接，仍须断言被测行为。开发者指定某个测试使用 mock 后，后续修改保持该风格，除非开发者明确撤销。
+- 测试文件及辅助代码应在测试进程内导入并调用被测模块；不得使用 `exec`、`execFile`、`spawn`、`fork` 及其同步版本或其他命令执行工具，另起 Node.js、Shell、CLI 或应用进程执行被测代码。正常通过包管理器、测试运行器运行测试及运行器自身的进程管理不受此限制。
+- 测试与源码同层，普通模块使用 `{源文件名}.spec.ts`，TSX 组件使用 `{源文件名}.spec.tsx`；不因使用 React、jsdom 或 Testing Library 就机械改为集成测试命名。
+- 组件测试中的接口请求在测试进程内 mock，不透传真实后端；断言用户操作后的界面、状态变化和错误反馈，不只断言 mock 被调用。
+- 浏览器端到端测试按项目实际配置单独运行；运行前核对目标环境，真实写入及认证等副作用只能作用于明确隔离的测试资源，不用 mock 替代正在验证的完整链路。
 
 ## 类型要求
 
-- 类型必须按照 `.d.ts` 定义到原逻辑文件的同级目录。
-- 类型文件命名为对应源逻辑文件名加 `.d.ts`，例如 `mount.ts` 的类型文件为 `mount.d.ts`。
+- 手写的 `type` / `interface` 等类型声明与 `.ts` / `.tsx` 逻辑分开，放在对应源码同级同名的 `.d.ts` 中，例如 `mount.ts` 对应 `mount.d.ts`、`App.tsx` 对应 `App.d.ts`。
 - 只有 `src/types` 目录下的 `.d.ts` 允许定义全局类型或全局变量。
 - 其他位置的 `.d.ts` 必须使用模块化导出，不允许写全局声明。
 
