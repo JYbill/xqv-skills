@@ -19,7 +19,7 @@ export default defineConfig({
   },
   settings: {
     react: {
-      version: '19.2.7',
+      version: '19.3.0',
     },
   },
   categories: {

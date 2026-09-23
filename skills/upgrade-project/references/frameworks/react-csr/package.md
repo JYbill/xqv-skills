@@ -12,7 +12,7 @@
     "dev": "vite",
     "build": "pnpm typecheck && vite build",
     "preview": "vite preview",
-    "typecheck": "tsgo --noEmit",
+    "typecheck": "tsc --noEmit",
     "lint": "oxlint --deny-warnings --config oxlint.config.ts",
     "format": "oxfmt --config oxfmt.config.ts",
     "test": "vitest run",
@@ -20,28 +20,28 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.1",
-    "@testing-library/dom": "^10.4.1",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "@types/node": "^26.0.0",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "@typescript/native-preview": "7.0.0-dev.20260624.1",
-    "@vitejs/plugin-react": "^6.0.2",
+    "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
     "husky": "^9.1.7",
-    "jsdom": "^26.1.0",
-    "lint-staged": "^17.0.8",
-    "oxfmt": "^0.56.0",
-    "oxlint": "^1.71.0",
-    "oxlint-tsgolint": "^0.23.0",
-    "tailwindcss": "^4.3.1",
-    "vite": "^8.1.0",
-    "vitest": "^4.0.18"
+    "jsdom": "^30.1.1",
+    "lint-staged": "^17.5.1",
+    "oxfmt": "^0.70.0",
+    "oxlint": "^1.85.0",
+    "oxlint-tsgolint": "^7.0.2002",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
   },
   "engines": {
     "node": ">=26"

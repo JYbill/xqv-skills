@@ -8,13 +8,13 @@
 
 - React CSR 项目规则以 `../../profiles/react-csr/AGENTS.md` 为唯一正文；其中包含前端项目默认加载的 `react-ddt` 等 skill 约定。
 - Jest 到 Vitest 的迁移步骤见 `../../migrations/jest-vitest/index.md`；本目录只描述 React CSR 项目的 Vitest 目标配置。
-- 本目录默认面向 React CSR、Vite、Tailwind CSS、Vitest、Testing Library、TypeScript、tsgo、Oxlint、Oxfmt、lint-staged 和 Husky 组合，不代表 Next.js、Remix 或所有 React 项目。
+- 本目录默认面向 React CSR、Vite、Tailwind CSS、Vitest、Testing Library、TypeScript、tsc、Oxlint、Oxfmt、lint-staged 和 Husky 组合，不代表 Next.js、Remix 或所有 React 项目。
 
 ## 配置文件
 
 - `package.md`：`package.json` 基础脚本和直接依赖模板。
 - `dependencies.md`：依赖分组和安装命令。
-- `tsconfig.md`：React CSR + Vite + tsgo 类型检查模板。
+- `tsconfig.md`：React CSR + Vite + tsc 类型检查模板。
 - `vite-config.md`：Vite React、Tailwind CSS 和 `@` alias 模板。
 - `vitest-config.md`：React + jsdom 测试配置模板。
 - `vitest-setup.md`：Testing Library matcher 初始化模板。
