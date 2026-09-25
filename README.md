@@ -13,18 +13,6 @@
 
 通用判断流程保留在 `SKILL.md`；React 专项规则位于 `references/react/index.md`，Node.js 后台专项规则位于 `references/nodejs/index.md`。执行前应先读取目标仓库的 `CLAUDE.md`、`AGENTS.md` 和相关模块说明，项目内更具体的规范优先。
 
-### jev-codex-browser-use
-
-用于在 Codex Computer Use 中分配直接 CUA 操作与 Jev 连续浏览器决策：已确定的操作直接执行，需要根据页面选择路径时才交给 Jev。Codex 负责文字输入、异常接管和独立验收；接管后重新判断是否需要 Jev，不因已有会话或任务未完成而自动续调。新子目标使用独立的 Jev 历史。
-
-bridge 对唯一可执行候选直接操作并交回验收，多个候选才请求 Jev，无候选交回检查。自带 `scripts/bridge.mjs` 和配置说明，可独立替代 `jev-browser-use`；优先读取新配置，并兼容旧配置路径。接口示例见 `references/runtime.md`。Jev 部分支持 Chrome 和内置浏览器，不提供原生桌面应用控制。
-
-### jev-curl
-
-用于设计 TypeSafe／Jev 功能，将语义判断拆成候选选择、是非判断和评分，由代码组合结果，并通过 curl 调用官方 HTTP API。直接读取执行环境中的 `TYPESAFE_API_KEY`，无需 SDK 或 MCP。
-
-正文保留设计流程、调用约束与验证要求；复杂问题设计、分支预判、分阶段依赖及评分复用等方法放在 `references/design-patterns.md`，请求示例和返回格式保留在 `references/http.md`，按任务需要读取。浏览器控制由 `jev-codex-browser-use` 处理。
-
 ### kysely-schema
 
 用于把 MySQL DDL 转换为 Kysely 表结构类型，并按用户要求补齐查询、插入、批量插入、更新、批量更新或 upsert 方法。处理时需要准确判断 `Generated<>`、`null`、默认值以及 camelCase 字段与 snake_case SQL 字段的映射。
