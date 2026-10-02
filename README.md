@@ -7,6 +7,12 @@
 
 ## 通用 skills
 
+### coding-with-plan
+
+用于执行用户已确认的 plan 文件，由 `coding` 子 Agent 实现业务代码、编写测试并自验，`review` 子 Agent 根据 plan 和目标项目 `AGENTS.md` 指向的开发、测试规范评审。两者直接交接返工与复审，主 Agent 跟踪状态并核对最终结果。
+
+普通失败继续修复，关键资料缺失、规范冲突、必要验证无法执行或反复返工无进展时暂停整个流程并上报主 Agent。依赖环境实际提供的多 Agent 创建、通信和中断等能力，不负责制定或重新审批计划，也不额外创建 test Agent。
+
 ### ddt
 
 用于检查并纠正 dont-do-that packaging 问题，包括过度封装、过度抽象、薄 helper、薄类型拆分、单次引用 enum / 常量、实例属性绕传参数，以及 React 组件、前端 util 和 Node.js 后台分层的职责放置问题。
