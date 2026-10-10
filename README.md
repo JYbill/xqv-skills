@@ -7,11 +7,18 @@
 
 ## 通用 skills
 
+### bullboard
+
+用于通过 Bull Board HTTP API 和 curl 查询 BullMQ 队列、任务进度、结果、失败原因与日志，以及执行已授权的重试、暂停、恢复和清理操作。使用时配置 `BULL_URL`、`BULL_USER`、`BULL_PASSWORLD`（保留此拼写），并核对目标部署的认证方式和接口能力。
+
+[执行流程](skills/bullboard/SKILL.md)与 [HTTP API 参考](skills/bullboard/references/http-api.md)说明了认证、查询和写操作边界；仅在用户明确要求时等待任务完成。凭据不写入 skill，任务数据和错误只输出必要的脱敏摘要。
+
 ### coding-with-plan
 
 用于执行用户已确认的 plan 文件，由 `coding` 子 Agent 实现业务代码、编写测试并自验，`review` 子 Agent 根据 plan 和目标项目 `AGENTS.md` 指向的开发、测试规范评审。两者直接交接返工与复审，主 Agent 跟踪状态并核对最终结果。
 
 普通失败继续修复，关键资料缺失、规范冲突、必要验证无法执行或反复返工无进展时暂停整个流程并上报主 Agent。依赖环境实际提供的多 Agent 创建、通信和中断等能力，不负责制定或重新审批计划，也不额外创建 test Agent。
+
 
 ### ddt
 
