@@ -6,6 +6,14 @@
 
 后台服务可能缓存配置；用户修改配置后，用 `config/read` 和创建/恢复响应核对生效值，不自行重启正在执行的服务。
 
+## 增量轮询
+
+普通 `poll` 已有事件立即返回，否则等待新事件，最多等 `--wait` 秒（2..50）。`--until-idle` 必须指定 `--thread`，等待该 thread 的 `turn/completed`、`pending_requests` 或 `question_messages`；`has_more=true` 和断线也立即返回。返回字段保持不变，完成判定仍需核对目标 turn，不能仅凭 thread idle 或等待结束。
+
+`--summary` 保留 `item/completed`、`thread/status/changed`、`turn/completed`、服务请求与解决通知、提问、错误及桥接诊断，过滤 delta、`account/rateLimits/updated`、`thread/tokenUsage/updated`、`skills/changed` 等其他通知。`--limit` 在过滤后计数，推荐 500；过滤不删除原始记录。
+
+`cursor` 是原始事件序号。还有关键事件未返回时，游标停在本页最后一条返回事件；读完当前快照才推进到快照末尾，包含已过滤事件。`has_more=true` 时用 `--wait 2` 连续翻页；切换过滤模式不会重放已越过游标的噪音，需要原始事件时用之前的游标重读。请求与提问另作状态快照，可能来自本页游标以外的事件，按各自状态核对是否仍需处理。
+
 ## 请求记录
 
 带 `id` 和 `method` 的后端消息属于服务发给客户端的请求，桥接记录完整 `params`，保留原类型。常见类型：

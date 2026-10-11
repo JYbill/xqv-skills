@@ -101,10 +101,12 @@ python3 "$CODEX_SKILL_DIR/scripts/bridge.py" rpc --method turn/start --params-fi
 ```
 
 ```bash
-python3 "$CODEX_SKILL_DIR/scripts/bridge.py" poll --thread <会话ID> --cursor 0 --wait 2
+python3 "$CODEX_SKILL_DIR/scripts/bridge.py" poll --thread <会话ID> --cursor 0 --wait 50 --limit 500 --until-idle --summary
 ```
 
-每次用上次返回的 `cursor` 继续，避免重复读取；游标按任务保存。`has_more=true` 时继续读取后续页。脚本在本地等待后返回增量事件、待处理请求、`question_messages` 与连接状态。
+每次用上次返回的 `cursor` 继续，游标按任务保存，推荐 `--limit 500`。`has_more=true` 时用最短等待 `--wait 2` 连续读取后续页，已有事件不再等待。`--summary` 过滤 delta、额度、token 用量和技能变更通知，保留关键事件与请求、提问；分页游标仍覆盖已读取的原始事件。
+
+`--until-idle --summary` 一次等到目标 thread 的 `turn/completed`、待处理请求或 `question_messages`，最多等待 `--wait` 秒；分页未读完或连接断开也会提前返回。超时返回不代表完成。
 
 - 等待时间由主助手根据实际进度决定，最短 2 秒；脚本单次最多 50 秒，并且必须小于宿主工具超时。即将完成的步骤可用 2 秒，长命令或连续无新增进展时延长等待。
 - 按上图决定继续或暂停。skill 不会在宿主结束当前轮后自动唤醒模型，也不能保证关闭 App 后继续监督。
@@ -112,7 +114,7 @@ python3 "$CODEX_SKILL_DIR/scripts/bridge.py" poll --thread <会话ID> --cursor 0
 - 转发用户的纠正要求：先核对轮次，活跃时用 `turn/steer`：`{"threadId":"...","expectedTurnId":"正在执行的轮次ID","input":[{"type":"text","text":"用户的纠正要求"}]}`；已结束时核对最新结果，用原 thread 的 `turn/start` 传入仍需执行的要求。引导失败先核对接收状态，避免重复提交；后续轮询检查纠正是否生效。
 - 用户要求停止时，发送 `turn/interrupt`，参数为 `threadId` 与 `turnId`；看到完成事件的中断状态后才报告已停止。
 
-`thread/status/changed` 可反映 active、idle 等运行状态。`turn/completed` 需核对 thread、turn 和 `status`，区分 completed、failed、interrupted；`item/completed` 或普通消息不是整轮完成标志。
+完成判定只看目标 turn 的 `turn/completed`，核对 thread、turn 和 `status`，区分 completed、failed、interrupted；`thread/status/changed` 的 idle、`item/completed` 或普通消息不能代替完成事件。
 
 首次接入、事件缺口或重连后，通过 `thread/read` 与分页历史核对结果：`thread/turns/list` 参数可用 `{"threadId":"...","limit":20,"itemsView":"full","sortDirection":"desc"}`。不要把连接断开当作任务完成。更多故障与请求处理见 [协议与待处理请求](references/protocol.md)。
 

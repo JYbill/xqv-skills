@@ -31,6 +31,13 @@ MUTATIONS = {'thread/start', 'thread/resume', 'turn/start', 'turn/steer', 'turn/
 def dumps(x):
     return json.dumps(x, ensure_ascii=False, separators=(',', ':'))
 
+def summary_event(msg):
+    """Keep completed content, lifecycle, requests and bridge diagnostics."""
+    method = msg.get('method', '')
+    return ('id' in msg or method in {'item/completed', 'thread/status/changed',
+            'turn/completed', 'serverRequest/resolved', 'error'} or
+            method.startswith('bridge/') or bool((msg.get('params') or {}).get('questions')))
+
 class UnixWebSocket:
     """RFC 6455 text transport on the existing user-private Codex Unix socket."""
     def __init__(self, path):
@@ -132,6 +139,7 @@ class Store:
     def __init__(self, path):
         self.db = sqlite3.connect(path, check_same_thread=False)
         self.lock = threading.RLock()
+        self.changed = threading.Condition(self.lock)
         self.db.executescript('''
         CREATE TABLE IF NOT EXISTS events(seq INTEGER PRIMARY KEY AUTOINCREMENT, epoch TEXT, thread_id TEXT, body TEXT);
         CREATE TABLE IF NOT EXISTS requests(key TEXT PRIMARY KEY, epoch TEXT, thread_id TEXT, body TEXT, status TEXT);
@@ -157,13 +165,15 @@ class Store:
                     if (json.loads(raw).get('params') or {}).get('turnId') == turn_id:
                         self.db.execute("UPDATE requests SET status='ended' WHERE key=?", (key,))
             self.db.commit()
+            self.changed.notify_all()
 
     def disconnected(self, epoch):
         with self.lock:
             self.db.execute("UPDATE requests SET status='unknown_after_disconnect' WHERE epoch=? AND status IN ('pending','response_sent')", (epoch,))
             self.db.commit()
+            self.changed.notify_all()
 
-    def poll(self, cursor, tid, limit):
+    def poll(self, cursor, tid, limit, summary=False):
         with self.lock:
             high = self.db.execute('SELECT coalesce(max(seq),0) FROM events').fetchone()[0]
             sql = 'SELECT seq,epoch,thread_id,body FROM events WHERE seq>?'
@@ -171,7 +181,17 @@ class Store:
             if tid:
                 sql += ' AND (thread_id=? OR thread_id IS NULL)'
                 args.append(tid)
-            rows = self.db.execute(sql + ' ORDER BY seq LIMIT ?', (*args, limit + 1)).fetchall()
+            if summary:
+                # Limit retained events, not raw rows. Stop before the first unread
+                # key event; only advance to high after exhausting the snapshot.
+                rows = []
+                for row in self.db.execute(sql + ' ORDER BY seq', args):
+                    if summary_event(json.loads(row[3])):
+                        rows.append(row)
+                        if len(rows) > limit:
+                            break
+            else:
+                rows = self.db.execute(sql + ' ORDER BY seq LIMIT ?', (*args, limit + 1)).fetchall()
             more = len(rows) > limit
             rows = rows[:limit]
             pending = self.db.execute("SELECT key,epoch,thread_id,body,status FROM requests WHERE status IN ('pending','response_sent','unknown_after_disconnect')" + (' AND (thread_id=? OR thread_id IS NULL)' if tid else ''), (tid,) if tid else ()).fetchall()
@@ -287,8 +307,24 @@ class Bridge:
             wait = float(req.get('wait', 2))
             if not 2 <= wait <= 50:
                 raise ValueError('wait must be 2..50 seconds; choose below your client tool timeout.')
-            time.sleep(wait)
-            result = self.store.poll(int(req.get('cursor', 0)), req.get('thread'), min(max(int(req.get('limit', 100)), 1), 500))
+            tid = req.get('thread')
+            until_idle = req.get('until_idle', False)
+            if until_idle and not tid:
+                raise ValueError('until-idle requires a target --thread.')
+            deadline = time.monotonic() + wait
+            with self.store.changed:
+                while True:
+                    result = self.store.poll(int(req.get('cursor', 0)), tid,
+                        min(max(int(req.get('limit', 100)), 1), 500), req.get('summary', False))
+                    completed = any(x['thread_id'] == tid and x['event'].get('method') == 'turn/completed'
+                                    for x in result['events'])
+                    ready = (completed if until_idle else bool(result['events']))
+                    remaining = deadline - time.monotonic()
+                    if (ready or result['has_more'] or result['pending_requests'] or
+                            result['question_messages'] or not self.alive or remaining <= 0):
+                        break
+                    # Check and wait under the event writer's lock to avoid lost wakes.
+                    self.store.changed.wait(remaining)
             result.update(connected=self.alive, epoch=self.epoch, coverage='Events observed by this bridge connection; not a complete historical request inventory.')
             return result
         if op == 'rpc':
@@ -365,6 +401,8 @@ def main():
     q.add_argument('--cursor', type=int, default=0)
     q.add_argument('--wait', type=float, required=True)
     q.add_argument('--limit', type=int, default=100)
+    q.add_argument('--until-idle', action='store_true', help='Wait for target thread completion, requests or questions')
+    q.add_argument('--summary', action='store_true', help='Return key events without deltas or usage notifications')
     r = sub.add_parser('rpc')
     r.add_argument('--method', choices=sorted(RPC_METHODS), required=True)
     r.add_argument('--params-file', required=True, help='JSON file, or - for stdin')
