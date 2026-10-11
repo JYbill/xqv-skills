@@ -70,6 +70,14 @@ python3 "$CODEX_SKILL_DIR/scripts/bridge.py" rpc --method turn/start --params-fi
 
 所有写操作必须有唯一 `--operation-id`。同一操作超时后用原 ID、原参数重试，桥接会返回已保存结果；不同操作用新 ID。后端超时或断线导致结果未知时，先查询原 thread 和 `bridge/lateResponse`，不能换 ID 重发。新建 thread 超时且未取得 ID 时，先核对 `thread/list` 和事件。
 
+### 归档已有会话
+
+用户要求归档时，先用 `thread/read` 核对目标会话和当前共享服务，再通过 `thread/archive` 提交参数 `{"threadId":"<会话ID>"}`。归档属于写操作，必须提供唯一 `--operation-id`；重试沿用原 ID 和原参数。归档后用 `thread/list` 的 `archived:true` 查询并核对目标 ID，确认成功后再回报。仅有归档需求时，不调用 `thread/resume` 或 `turn/start`。
+
+```bash
+python3 "$CODEX_SKILL_DIR/scripts/bridge.py" rpc --method thread/archive --params-file <归档参数JSON路径> --operation-id <唯一操作ID>
+```
+
 ## 3. 动态轮询与纠偏
 
 下图概括交互分支；具体提交方式见本节和第 4 节。人工处理项优先于偏差通知；图中的“结束当前轮”指 Claude 回复结束，不是中断 Codex。

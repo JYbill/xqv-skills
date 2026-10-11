@@ -23,10 +23,10 @@ ROOT = Path(os.environ.get('CODEX_SKILL_STATE', str(Path.home() / '.local/state/
 TAG = hashlib.sha256(str(HOME).encode()).hexdigest()[:12]
 STATE = ROOT / TAG
 SOCK = STATE / 'bridge.sock'
-RPC_METHODS = {'thread/start', 'thread/resume', 'thread/read', 'thread/list',
+RPC_METHODS = {'thread/start', 'thread/resume', 'thread/read', 'thread/list', 'thread/archive',
                'thread/turns/list', 'thread/items/list', 'turn/start', 'turn/steer',
                'turn/interrupt', 'config/read'}
-MUTATIONS = {'thread/start', 'thread/resume', 'turn/start', 'turn/steer', 'turn/interrupt'}
+MUTATIONS = {'thread/start', 'thread/resume', 'thread/archive', 'turn/start', 'turn/steer', 'turn/interrupt'}
 
 def dumps(x):
     return json.dumps(x, ensure_ascii=False, separators=(',', ':'))

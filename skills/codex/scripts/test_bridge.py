@@ -5,6 +5,7 @@ import tempfile
 import threading
 import time
 import unittest
+from unittest.mock import Mock
 from pathlib import Path
 from bridge import Bridge, Store, summary_event
 
@@ -133,6 +134,29 @@ class Tests(unittest.TestCase):
         self.store.event('e',{'id':6,'method':'item/tool/requestUserInput','params':{'threadId':'t'}})
         self.store.disconnected('e')
         self.assertEqual(self.store.poll(0,'t',10)['pending_requests'][0]['status'],'unknown_after_disconnect')
+    def test_archive_requires_operation_id_and_deduplicates_retries(self):
+        b=self.poll_bridge()
+        b.mutation_lock=threading.Lock()
+        b.rpc=Mock(return_value={'id':2,'result':{}})
+        req={'op':'rpc','method':'thread/archive','params':{'threadId':'t'}}
+        with self.assertRaisesRegex(ValueError,'operation-id'):
+            b.handle(req)
+        b.rpc.assert_not_called()
+        req['operation_id']='archive-one'
+        first=b.handle(req)
+        self.assertEqual(first,{'id':2,'result':{}})
+        self.assertEqual(b.handle(req),first)
+        b.rpc.assert_called_once_with('thread/archive',{'threadId':'t'})
+        with self.assertRaisesRegex(ValueError,'different arguments'):
+            b.handle({**req,'params':{'threadId':'other'}})
+        b.rpc.assert_called_once()
+    def test_unlisted_mutation_is_still_rejected(self):
+        b=self.poll_bridge()
+        b.rpc=Mock()
+        with self.assertRaisesRegex(ValueError,'Unsupported method'):
+            b.handle({'op':'rpc','method':'thread/delete','params':{'threadId':'t'},
+                'operation_id':'delete-one'})
+        b.rpc.assert_not_called()
     def test_bridge_defaults_idempotency_and_human_gate(self):
         path=Path(self.tmp.name)/'fake.py';path.write_text(FAKE)
         b=Bridge(self.store,[sys.executable,str(path)])
