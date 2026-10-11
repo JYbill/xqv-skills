@@ -13,6 +13,12 @@
 
 [执行流程](skills/bullboard/SKILL.md)与 [HTTP API 参考](skills/bullboard/references/http-api.md)说明了认证、查询和写操作边界；仅在用户明确要求时等待任务完成。凭据不写入 skill，任务数据和错误只输出必要的脱敏摘要。
 
+### codex
+
+用于由 Claude 或其他主助手派发任务，通过本机共享 Codex App Server 执行，并让手机通过 ChatGPT SSH 访问同一会话。主助手保存会话 ID、动态轮询进展、转发用户纠正要求并核对执行结果。
+
+`skills/codex/scripts/bridge.py` 直接连接既有共享服务，不依赖第三方 Python 包；连接、请求处理和恢复说明分别位于 `SKILL.md` 与 `references/protocol.md`。主助手不自动代用户审批或回答，遇到待人工处理的问题时保留连接并暂停轮询。
+
 ### coding-with-plan
 
 用于执行用户已确认的 plan 文件，由 `coding` 子 Agent 实现业务代码、编写测试并自验，`review` 子 Agent 根据 plan 和目标项目 `AGENTS.md` 指向的开发、测试规范评审。两者直接交接返工与复审，主 Agent 跟踪状态并核对最终结果。
