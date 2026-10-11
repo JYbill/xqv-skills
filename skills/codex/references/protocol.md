@@ -1,18 +1,55 @@
 # 协议与待处理请求
 
+## 两种入口
+
+模式选择与完整流程见 [SKILL.md](../SKILL.md#先选择模式)，每个新任务由用户明确选择，不设默认模式。
+
+| 模式 | 入口 | 连接与存储 | 提交后的行为 |
+|---|---|---|---|
+| 1. 持续追踪 | `bridge.py` | 桥接连接共享服务，事件写入临时 SQLite | 主助手通过 `poll` 跟进；轮次完成后桥接退出，SQLite 保留 |
+| 2. 仅派发 | 原生 `codex queue` | 新会话短连接创建；CLI `codex queue` 提交，不启动桥接、不写桥接 SQLite | CLI 确认提交后结束回复，不接管审批或继续查询 |
+
+新会话先保存 `thread/start` 返回的 ID，再调用 CLI。`Queued message ...` 是提交成功，不是执行完成；超时或非零退出码均不能据此自动重发。仅派发不经过桥接操作去重表，不使用 `--operation-id`。CLI 不覆盖的会话创建使用一次性连接，模板见 [仅派发示例](cli-examples.md#仅派发新会话或已有会话)。
+
+CLI 已覆盖的派发和归档分别使用 `codex queue`、`codex archive`；桥接 RPC 不再开放 `turn/start`、`thread/archive`。持续追踪必须先通过桥接创建或恢复会话、确认订阅，再从 CLI 派发。保存事件中的 `turn/started` 用于核对实际 turn ID；排队消息 ID 不能替代轮次 ID。
+
+以下桥接连接、轮询和答复说明适用于模式 1；模式 2 的故障应先核对 CLI 返回和原会话，不自动切换成持续追踪。
+
+## 脚本结构
+
+外部命令仍由 `bridge.py` 提供，拆分不改变子命令、参数和返回格式。安装时复制整个技能目录，不单独复制入口文件。
+
+```text
+scripts/
+  bridge.py     命令行参数、输出和退出码
+  client.py     连接后台、启动检查、离线读取事件
+  daemon.py     接收 Codex 事件、处理请求、管理进程退出
+  store.py      SQLite、分页、提问状态和批量等待
+  transport.py  App Server 的 Unix WebSocket 通信
+  config.py     共享路径、超时、接口白名单和 JSON 编码
+```
+
+客户端的离线查询直接使用存储模块，不加载后台服务；短连接创建会话只引用 `config.py` 和 `transport.py`。仅执行 `bridge.py serve` 才加载后台服务入口。
+
 ## 连接和配置
 
 桥接直接连接 `$CODEX_HOME/app-server-control/app-server-control.sock`，使用 Unix socket 上的 WebSocket（HTTP Upgrade，客户端掩码帧，支持分片与 ping/pong）。手机 SSH 的 `codex app-server proxy` 转发的也是这一端点的 WebSocket 字节流，不能把它当成 JSONL stdio 服务。桥接自身与短时查询命令之间使用本地 Unix socket 和 JSONL，不暴露网络监听。
 
 后台服务可能缓存配置；用户修改配置后，用 `config/read` 和创建/恢复响应核对生效值，不自行重启正在执行的服务。
 
+桥接只在目标会话的当前轮次完成时自动退出；其他会话或已知旧轮次的 `turn/completed` 不触发退出。恢复一个已在执行的会话时，若尚未观察到 `turn/started`，以该目标会话收到的完成事件为准。普通 `item/completed` 不触发退出。已接收的最终事件先写入 SQLite，正在处理的客户端请求完成后退出本地服务。退出后的 `poll` 从 SQLite 读取，返回 `connected=false`；是否完成仍以目标轮次的完成事件为准。后续 RPC 需要先 `start` 并重新接入会话。意外断线同样结束后台服务，`start` 会等待断开的旧接收进程释放资源，再重新启动；不会把 `connected=false` 当作连接成功。
+
 ## 增量轮询
 
-普通 `poll` 已有事件立即返回，否则等待新事件，最多等 `--wait` 秒（2..50）。`--until-idle` 必须指定 `--thread`，等待该 thread 的 `turn/completed`、`pending_requests` 或 `question_messages`；`has_more=true` 和断线也立即返回。返回字段保持不变，完成判定仍需核对目标 turn，不能仅凭 thread idle 或等待结束。
+`poll` 必须指定非空的 Codex 会话 ID（`--thread`）。`--event-limit` 范围为 1～100，默认 20。积累到指定数量的关键事件时返回；人工审批、结构化提问、目标会话轮次结束或断线提前返回。内部保留 100 秒超时保护，客户端 socket 超时为 110 秒，调用工具的超时应大于 110 秒。主 Agent 或宿主工具可能因长时间没有输出而终止调用；没有输出本身不说明 Codex 卡住。这些超时设置只能限制等待时间，不能阻止宿主提前终止工具。客户端被终止后，先核对桥接和会话状态，再用最后确认的游标查询，不重新派发任务。旧的 `--wait`、`--until-idle`、`--limit` 已移除。
 
-`--summary` 保留 `item/completed`、`thread/status/changed`、`turn/completed`、服务请求与解决通知、提问、错误及桥接诊断，过滤 delta、`account/rateLimits/updated`、`thread/tokenUsage/updated`、`skills/changed` 等其他通知。`--limit` 在过滤后计数，推荐 500；过滤不删除原始记录。
+`poll` 固定保留 `item/completed`、`thread/status/changed`、`turn/started`、`turn/completed`、服务请求与解决通知、提问、错误及桥接诊断，过滤 delta、`account/rateLimits/updated`、`thread/tokenUsage/updated`、`skills/changed` 等其他通知。条数按过滤后的事件计算，过滤不删除原始记录。
 
-`cursor` 是原始事件序号。还有关键事件未返回时，游标停在本页最后一条返回事件；读完当前快照才推进到快照末尾，包含已过滤事件。`has_more=true` 时用 `--wait 2` 连续翻页；切换过滤模式不会重放已越过游标的噪音，需要原始事件时用之前的游标重读。请求与提问另作状态快照，可能来自本页游标以外的事件，按各自状态核对是否仍需处理。
+`events` 按条数分页；`urgent_events` 单独返回游标之后的紧急事件，包含后续页中的审批、结构化提问和完成事件。两者可能重复，按事件 `cursor` 去重。`pending_requests` 与 `question_messages` 仍是独立状态快照，可能来自游标之前；提交答复前核对最新状态。旧连接的失效请求不会持续唤醒新的 `poll`；已出现后续用户消息的提问在该消息读过后也不再持续唤醒，但仍保留“答复尚未核实”的标记。新轮次开始会清除上一轮提问快照。
+
+`cursor` 是原始事件序号。还有关键事件未返回时，游标停在本页最后一条普通分页记录；读完当前快照才推进到快照末尾，包含已过滤事件。紧急事件提前返回不推进分页游标，避免跳过普通记录。`has_more=true` 时继续翻页。
+
+`return_reason` 为 `event_limit`（已满指定条数）、`attention`（有紧急事件或人工处理项）、`disconnected`（连接已断开）或 `timeout`（内部等待超时）。完成判定仍需核对目标 turn 的完成事件和状态，不能只看返回原因。
 
 ## 请求记录
 
@@ -40,25 +77,31 @@ codex app-server generate-json-schema --out <临时目录> --experimental
 
 例如命令审批的具体决定必须按当前 `CommandExecutionRequestApprovalResponse` 校验；用户输入按 `ToolRequestUserInputResponse`。不要默认“本次允许”意味着“整场会话允许”。
 
-把准确响应对象写入私有 JSON 文件：
-
-```bash
-python3 "$CODEX_SKILL_DIR/scripts/bridge.py" respond --request-key '<poll返回的key>' --result-file <响应JSON路径> --human-confirmed --operation-id <唯一操作ID>
-```
+把准确响应对象写入私有 JSON 文件，按 [回复服务请求模板](cli-examples.md#人工处理回复服务请求) 提交。
 
 `--human-confirmed` 是对已获得用户答复的声明，不是获取许可的替代品。脚本只能核对请求是否属于当前连接且未解决，不能判断自然语言授权是否充分。
 
 ## 故障处理
 
+客户端收到顶层 `error` 时输出错误 JSON 并返回非零退出码；`status` 返回 `connected=false` 也使用非零退出码。主助手同时检查退出码和返回内容。
+
 - `connected=false`：原服务任务可能仍运行。先看事件和历史，定位连接失败原因；不重建任务、不重发未确认的写操作。
-- 重建桥接前终止旧桥接（核对 PID/命令），确认不会丢失尚未响应的请求，再运行 `start`。后台 Codex 服务无需跟着停止。历史事件仍可查询，旧请求标为状态未知。
+- 当前版本断线后自动退出，直接 `start` 可重建连接；若旧版本进程仍未退出，先核对 PID/命令并停止该旧桥接，不停止后台 Codex 服务。重新 `thread/resume` 时即使沿用原操作 ID，也会在新连接重新订阅；历史创建操作不会因此重复执行。
 - 客户端查询超时：用相同游标重新查询。写操作重试遵循 SKILL.md 第 2 节；RPC 40 秒超时后的响应记录为 `bridge/lateResponse`，按 RPC ID 和内容核对。
 - 协议版本不匹配：查看 `codex --version`、`codex app-server daemon version` 和当前 schema，报告不兼容；不自动更新或降级运行中的服务。
 - `thread/resume` 写入冲突：可能是桌面 App 独立服务持有会话；应切换到正确入口或等用户决定交接，不能删锁。
 
 ## 已验证与未验证
 
-实现目标是一个持久连接接收事件，短时查询读取增量；手机与其共享后台服务。创建技能时已通过无模型调用的真实连接/当前会话查询检查及模拟协议测试。后续用户授权的真实测试已成功创建任务并收到带 `questions` 的异步提问；随后另一客户端提交“简短段落”，桥接收到用户消息、最终答复和 `turn/completed`；测试端没有代用户回答。手机实时引导、跨客户端审批交接、长时间断线恢复和 Claude Desktop 实际工具循环，需要接入后的端到端验证。
+持续追踪使用一个连接接收事件，短时查询读取增量；手机与其共享后台服务。创建技能时已通过无模型调用的真实连接/当前会话查询检查及模拟协议测试。后续用户授权的真实测试已成功创建任务并收到带 `questions` 的异步提问；随后另一客户端提交“简短段落”，桥接收到用户消息、最终答复和 `turn/completed`；测试端没有代用户回答。手机实时引导、跨客户端审批交接、长时间断线恢复和 Claude Desktop 实际工具循环，需要接入后的端到端验证。
+
+2026-10-11 已完成以下验证：
+
+- CLI 派发与桥接追踪联调通过：先由桥接创建并订阅会话，再调用 `codex queue`，桥接收到 `turn/started`、预期最终回复和 `turn/completed`；最后用 `codex archive` 归档，并从归档列表核对成功。
+
+- 本机 CLI 0.162.1 的 `codex queue` 在约 0.39 秒内提交并退出，测试轮次约 8.6 秒后完成；派发客户端退出未阻止该测试任务继续执行。
+- 短连接新建会话后通过 CLI 仅派发的流程实测成功，最终得到预期回复；测试会话已归档。仅派发后遇到真实审批、长期排队和断线恢复的行为未实测。
+- 27 项桥接离线测试通过，覆盖事件条数等待、紧急事件跨页返回、桥接进程退出后读取 SQLite。桥接进程退出测试使用真实本地进程和 socket，Codex 后端为模拟；不等同于真实模型端到端验证。
 
 来源：
 - https://learn.chatgpt.com/docs/app-server

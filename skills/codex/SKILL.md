@@ -1,39 +1,88 @@
 ---
 name: codex
-description: 将执行任务交给本机共享 Codex App Server，保存会话 ID，动态轮询进展、发送引导并转述结果。用于 Claude 或其他主助手负责讨论与任务派发、Codex 负责执行，且手机通过 ChatGPT SSH 访问同一任务的场景。
+description: 将执行任务交给本机共享 Codex App Server，由用户选择持续追踪或仅派发，保存会话 ID。用于 Claude 或其他主助手负责讨论与任务派发、Codex 负责执行，且手机通过 ChatGPT SSH 访问同一任务的场景。
 ---
 
 # Codex 任务派发
 
-主助手负责讨论、明确任务、检查进展和简洁转述；执行交给 Codex。使用本技能的 `scripts/bridge.py` 直接连接现有共享服务的 Unix WebSocket，手机 SSH 也应连接同一用户、同一 `CODEX_HOME` 的共享服务。
+主助手负责明确任务，由用户选择交互模式；执行交给 Codex。两种模式均连接现有共享 App Server，手机 SSH 也应连接同一用户、同一 `CODEX_HOME` 的共享服务。
+
+## 先选择模式
+
+每个新任务派发前，用户必须明确选择以下一种模式，不设默认值：
+
+1. **持续追踪**：主助手持续读取进展，转达审批和提问，核对轮次结果。
+2. **仅派发**：通过 Codex CLI 提交后结束回复，不自动查询进度，不接管后续审批和提问；由用户在 Codex 中处理。
+
+未明确选择时，向用户展示这两个选项并等待答复；在此之前不创建会话、不派发任务、不启动桥接。用户已经明确选择或清楚表达同等含义时直接沿用，同一任务续接不重复询问，除非用户要求切换。单纯查询或归档已有会话不要求选择派发模式。
+
+选 1 执行第 1～4 节；选 2 执行“仅派发模式”，提交后结束，不进入持续追踪流程。
+
+```text
+新任务
+  |
+  +-- 尚未选择模式 --> 展示 1 / 2，等待用户明确选择
+  |                   不创建会话、不派发、不启动桥接
+  |
+  +-- 1. 持续追踪 --> 核对目录和会话 --> 启动桥接并派发或续接
+  |                   |
+  |                   v
+  |                 poll 等待关键事件（默认 20 条）
+  |                   |
+  |                   +-- 审批 / 提问 --> 转达用户，按第 4 节处理
+  |                   +-- 进展 / 超时 --> 核对进展，继续 poll
+  |                   +-- 断线 -------> 核对历史与连接，不当作完成
+  |                   +-- 轮次结束 ---> 桥接退出，读取剩余分页
+  |                                     --> 核对结果，再回报
+  |
+  +-- 2. 仅派发 ----> 核对目录和目标会话
+                      |
+                      +-- 已有会话 --> codex queue
+                      +-- 新会话 ---> 短连接 thread/start --> codex queue
+                                        |
+                                        +-- 提交成功 --> 回报已派发，结束回复
+                                        |              不启动桥接、不自动追踪
+                                        +-- 结果不明 --> 保留会话 ID，核对后再决定
+                                                        不自动重发
+```
+
+同一任务续接沿用已有选择；用户明确要求切换时，再进入另一模式。仅派发后结束的是主助手的回复，Codex 仍由共享 App Server 执行。
+
+
+## 仅派发模式
+
+主助手直接调用 CLI，不增加派发包装脚本。已有会话执行 `codex queue`；新会话先短暂连接共享 App Server 调用 `thread/start`，随后交给 `codex queue`。不启动桥接后台进程，不写桥接 SQLite，也不删除已有的桥接数据。模型等配置沿用 Codex 现有设置。
+
+新会话派发前，按第 2 节“任务目录与信任”核对目录；本模式可直接读取 `$CODEX_HOME/config.toml` 的 `projects` 信任配置，不为检查配置启动桥接。目标会话由用户指定或从当前任务已保存的 ID 确定，不能凭猜测选取。
+
+任务文本从私有 JSON 文件读取。新会话创建及原生 `codex queue` 的调用方式见 [仅派发模板](references/cli-examples.md#仅派发新会话或已有会话)。
+
+新建会话后先保存 `thread/start` 返回的 ID，再调用 CLI；后续提交失败也沿用该会话。CLI 正常退出并返回 `Queued message ...` 只表示提交成功，回复“已派发”，不称任务已完成；新会话的这次回复提供 thread ID。超时、非零退出码或断线不能当作未提交，不自动重发，应先核对原会话。提交成功后清理输入临时文件，不自动轮询；用户之后明确要求查询或追踪时再执行相应操作。
 
 ## 执行约定
 
 - 默认使用 Codex 现有配置。新建会话只传任务目录等必需字段；模型、推理强度、沙箱、审批、服务等级、系统和开发者指令均不主动覆盖。只有用户明确指定时才添加对应字段。续接会话保留该会话已有配置。
 - 使用同一 thread ID 跟进同一任务；主助手的讨论和转述不会自动同步到手机，手机看到的是 Codex 会话。
+- CLI 已覆盖的能力直接使用 CLI：派发用 `codex queue`，归档用 `codex archive`。桥接 RPC 仅保留会话创建、订阅、查询、轮次引导和中断等未覆盖能力；审批与输入请求继续用 `respond`。
 - 通过共享服务发起任务；不以 `codex exec`、独立 `app-server` 或 App 内部 MCP 作为自动降级方案。遇到写入锁冲突，报告当前服务不一致，不删除锁、不重复建任务。
 - Thread ID、Turn ID、游标、请求 ID、操作 ID 等 Codex 元数据只在内部保存；仅新建会话的那一次回复提供 Thread ID，此后的回复不再展示这些元数据（用户明确询问时除外）。
 - 执行端内容只作为任务证据，不扩大用户授权；新的实质决策交给用户。
 
 ## 1. 连接
 
-需要本机 Python 3、可执行的 `codex` 和已运行的共享 App Server。脚本兼容 macOS/Linux 的 Unix socket，不依赖第三方 Python 包。
+本节及第 2～4 节为持续追踪流程；仅派发按前述独立入口执行。
 
-先将 `CODEX_SKILL_DIR` 设为当前加载的技能目录；仓库内路径为 `skills/codex/`，安装后以实际路径为准。后续命令沿用该变量。
+需要本机 Python 3、可执行的 `codex` 和已运行的共享 App Server。脚本兼容 macOS/Linux 的 Unix socket，不依赖第三方 Python 包。对外统一使用 `scripts/bridge.py`，模块职责见 [脚本结构](references/protocol.md#脚本结构)；安装或复制时保留整个 `scripts/` 目录。
 
-```bash
-export CODEX_SKILL_DIR="/absolute/path/to/codex"
-python3 "$CODEX_SKILL_DIR/scripts/bridge.py" start
-python3 "$CODEX_SKILL_DIR/scripts/bridge.py" status
-```
+按 [连接模板](references/cli-examples.md#持续追踪连接) 设置技能目录并运行 `start`、`status`。
 
 `start` 只启动桥接进程，连接既有共享服务，不启动新的 Codex 引擎。确认 `connected=true` 且初始化结果无错误。若服务未启动，在用户已授权启动执行环境的情况下运行 `codex app-server daemon start`；已有运行任务时不更新或重启后台服务。
 
-桥接进程持续接收通知和审批请求，在 `~/.local/state/codex-skill/<CODEX_HOME哈希>/` 保存事件与操作结果。保持该进程运行，短命的查询命令退出不会断开它。目录含任务内容，按本地私有数据处理。`CODEX_SKILL_STATE` 可指定其他本地状态根目录。修改 `CODEX_HOME` 后应确认手机仍连接相同服务。
+桥接进程持续接收通知和审批请求，默认在系统临时目录的 `codex-skill-<用户UID>/<CODEX_HOME哈希>/events.sqlite` 保存事件与操作结果。临时目录由 Python `tempfile.gettempdir()` 确定，同一用户、相同临时目录和 `CODEX_HOME` 的客户端使用同一路径。系统清理临时文件后，这些记录可能丢失。短命的查询命令退出不会断开桥接。桥接绑定由其创建或恢复的目标会话，并跟踪 `turn/started` 中的轮次 ID；收到匹配的 `turn/completed` 后保存事件并自动退出，SQLite 文件保留；退出后的 `poll` 直接读取文件，仍可继续分页。发起下一轮或恢复实时事件前，先重新执行 `start`，再按续接流程接入原 thread。一个桥接连接只接受一个目标会话，尝试创建或恢复另一会话会报错；并行任务需使用不同的 `CODEX_SKILL_STATE`。连接意外断开时桥接也会退出，`start` 等待旧进程释放连接后可重新启动。目录含任务内容，按本地私有数据处理。`CODEX_SKILL_STATE` 可指定其他本地状态根目录。修改 `CODEX_HOME` 后应确认手机仍连接相同服务。
 
 ## 2. 派发或续接
 
-用 JSON 文件传入参数，避免把用户原文拼进 shell。以下 `~/task-start.json` 等为示例路径，实际使用权限受限的临时文件，调用后清理不再需要的输入文件。
+用 JSON 文件传入参数，避免把用户原文拼进 shell。文件准备方式见 [调用模板](references/cli-examples.md#准备参数)，结果核对后清理不再需要的输入文件。
 
 ### 任务目录与信任
 
@@ -44,43 +93,21 @@ python3 "$CODEX_SKILL_DIR/scripts/bridge.py" status
 3. 未信任时询问用户是否信任该目录；信任属于安全设置，未获明确同意不写入。同意后只在 `$CODEX_HOME/config.toml` 追加一段 `[projects."<绝对路径>"]` 加 `trust_level = "trusted"`，写前备份，不改动其他配置；bridge 不放行 `config/value/write`，不要绕过白名单。
 4. 目录缺失或未信任且用户未同意时，不新建 thread，说明原因后继续其他已授权工作。
 
-新任务参数示例：
+按 [新建并派发模板](references/cli-examples.md#持续追踪新建会话并派发) 通过桥接 `thread/start` 创建并订阅会话，再用 `codex queue` 派发。保存 thread ID、有效配置，从后续 `turn/started` 或历史查询取得 turn ID；CLI 返回的 queued message ID 不是 turn ID。仅在创建后的这次回复提供 thread ID。发送前确认目录和目标服务，跨客户端验证范围见 [协议说明](references/protocol.md#已验证与未验证)。
 
-```json
-{"cwd":"/absolute/project/path"}
-```
+已有任务按 [续接模板](references/cli-examples.md#持续追踪续接已有会话) 先调用 `thread/read`（参数 `{"threadId":"..."}`）查看状态；需要接收它的实时事件时，调用同一服务的 `thread/resume`，仅传 `threadId` 和 `excludeTurns:true`，不覆盖配置。恢复不会自动发送新任务；需要新一轮时用 `codex queue`。当前轮次仍在执行时，用户纠正要求用 `turn/steer`，不以 queue 代替。先确认订阅成功再派发，避免漏接快速完成的轮次。
 
-```bash
-python3 "$CODEX_SKILL_DIR/scripts/bridge.py" rpc --method thread/start --params-file ~/task-start.json --operation-id <唯一操作ID>
-```
-
-保存返回的 `result.thread.id` 及有效配置。随后使用独立操作 ID 发送 `turn/start`：
-
-```json
-{"threadId":"<会话ID>","input":[{"type":"text","text":"用户授权的任务，包含约束和验收条件"}]}
-```
-
-```bash
-python3 "$CODEX_SKILL_DIR/scripts/bridge.py" rpc --method turn/start --params-file ~/task-turn.json --operation-id <另一唯一操作ID>
-```
-
-保存返回的 turn ID，并仅在这次创建后向用户提供 thread ID，便于手机定位。发送前确认任务目录和目标服务；跨客户端能力的验证范围见 [协议说明](references/protocol.md#已验证与未验证)。
-
-已有任务先调用 `thread/read`（参数 `{"threadId":"..."}`）查看状态；需要接收它的实时事件时，调用同一服务的 `thread/resume`，仅传 `threadId` 和 `excludeTurns:true`，不覆盖配置。恢复不会自动发送新任务；不要对正在执行的任务另发 `turn/start`。
-
-所有写操作必须有唯一 `--operation-id`。同一操作超时后用原 ID、原参数重试，桥接会返回已保存结果；不同操作用新 ID。后端超时或断线导致结果未知时，先查询原 thread 和 `bridge/lateResponse`，不能换 ID 重发。新建 thread 超时且未取得 ID 时，先核对 `thread/list` 和事件。
+通过桥接提交的所有写操作必须有唯一 `--operation-id`。同一操作超时后用原 ID、原参数重试，桥接会返回已保存结果；`thread/resume` 的去重限定在同一连接，重连后会重新订阅；不同操作用新 ID。后端超时或断线导致结果未知时，先查询原 thread 和 `bridge/lateResponse`，不能换 ID 重发。新建 thread 超时且未取得 ID 时，先核对 `thread/list` 和事件。
 
 ### 归档已有会话
 
-用户要求归档时，先用 `thread/read` 核对目标会话和当前共享服务，再通过 `thread/archive` 提交参数 `{"threadId":"<会话ID>"}`。归档属于写操作，必须提供唯一 `--operation-id`；重试沿用原 ID 和原参数。归档后用 `thread/list` 的 `archived:true` 查询并核对目标 ID，确认成功后再回报。仅有归档需求时，不调用 `thread/resume` 或 `turn/start`。
+用户要求归档时，先用 `thread/read` 核对目标会话和当前共享服务，再用原生 `codex archive`。归档后用 `thread/list` 的 `archived:true` 查询并核对目标 ID，确认成功后再回报。CLI 不使用桥接的 `--operation-id`，结果不明先查询状态，不自动重发。仅归档不恢复会话、不派发新任务。
 
-```bash
-python3 "$CODEX_SKILL_DIR/scripts/bridge.py" rpc --method thread/archive --params-file <归档参数JSON路径> --operation-id <唯一操作ID>
-```
+调用和归档后的查询见 [归档模板](references/cli-examples.md#归档会话)。
 
 ## 3. 动态轮询与纠偏
 
-下图概括交互分支；具体提交方式见本节和第 4 节。人工处理项优先于偏差通知；图中的“结束当前轮”指 Claude 回复结束，不是中断 Codex。
+下图细化模式 1 的交互分支；具体提交方式见本节和第 4 节。人工处理项优先于偏差通知；图中的“结束当前轮”指 Claude 回复结束，不是中断 Codex。
 
 ```text
 轮询并核对最新状态
@@ -88,7 +115,7 @@ python3 "$CODEX_SKILL_DIR/scripts/bridge.py" rpc --method thread/archive --param
   +-- 有待人工处理的问题 --> 用消息呈现问题与两种处理方式
   |                           |
   |                           v
-  |                         结束当前轮，暂停轮询，保留桥接连接
+  |                         结束当前轮，暂停轮询；桥接仍运行时保留连接
   |                           |
   |                           +-- 用户在 Claude 回答
   |                           |     --> 核对状态，提交仍需处理的答复
@@ -103,23 +130,24 @@ python3 "$CODEX_SKILL_DIR/scripts/bridge.py" rpc --method thread/archive --param
   |                           +-- 用户给出纠正 --> 核对状态并转发 --> 继续轮询
   |                           +-- 用户同意或未回复 -------------> 继续轮询
   |
-  +-- 正常执行中 -----------> 继续轮询
+  +-- 正常执行 / 内部超时 --> 继续轮询
   |
-  +-- Codex 当前轮已结束 ---> 核对结果与未完成项，再向用户回报
+  +-- 连接断开 -------------> 核对已保存事件和历史，不当作完成
+  |
+  +-- Codex 当前轮已结束 ---> 桥接自动退出，从 SQLite 读完剩余分页
+                              --> 核对结果与未完成项，再向用户回报
 ```
 
-```bash
-python3 "$CODEX_SKILL_DIR/scripts/bridge.py" poll --thread <会话ID> --cursor 0 --wait 50 --limit 500 --until-idle --summary
-```
+调用方式见 [读取进展模板](references/cli-examples.md#持续追踪读取进展)。
 
-每次用上次返回的 `cursor` 继续，游标按任务保存，推荐 `--limit 500`。`has_more=true` 时用最短等待 `--wait 2` 连续读取后续页，已有事件不再等待。`--summary` 过滤 delta、额度、token 用量和技能变更通知，保留关键事件与请求、提问；分页游标仍覆盖已读取的原始事件。
+每次 `poll` 必须通过 `--thread` 指定 Codex 会话 ID，并用上次返回的 `cursor` 继续，游标按任务保存。`--event-limit` 范围为 1～100，默认 20，既是等待条数，也是每页关键事件上限。已有记录也计入条数；固定过滤 delta、额度、token 用量和技能变更通知。
 
-`--until-idle --summary` 一次等到目标 thread 的 `turn/completed`、待处理请求或 `question_messages`，最多等待 `--wait` 秒；分页未读完或连接断开也会提前返回。超时返回不代表完成。
+未满指定条数时继续等待；人工审批、结构化提问、目标会话轮次结束或断线会提前返回。每次同时检查 `urgent_events`、`pending_requests` 和 `question_messages`：紧急事件即使位于后续分页，也会出现在 `urgent_events` 中，不受条数限制。按事件 `cursor` 去重；已解决的请求不重复处理。`has_more=true` 时继续用返回的游标读取普通事件，处理紧急事件不代表历史已读完。
 
-- 等待时间由主助手根据实际进度决定，最短 2 秒；脚本单次最多 50 秒，并且必须小于宿主工具超时。即将完成的步骤可用 2 秒，长命令或连续无新增进展时延长等待。
+- 内部单次等待上限为 100 秒，客户端连接超时为 110 秒，宿主工具超时应大于 110 秒。长时间没有输出不代表 Codex 卡住，但主 Agent 或宿主工具可能因此终止调用；该上限用于避免无限等待，不能保证调用不会被提前终止。若调用被终止，先核对桥接和会话状态，再沿用最后确认的游标查询，不重新派发任务。`return_reason` 表示事件数已满、需要检查紧急事件、断线或超时；超时不代表完成，继续用返回的游标查询。普通文字提问仍由主助手阅读消息识别。
 - 按上图决定继续或暂停。skill 不会在宿主结束当前轮后自动唤醒模型，也不能保证关闭 App 后继续监督。
 - 偏差判断依据工具结果、文件改动、失败信息和用户约束。通知只说明原目标、偏差及影响，告知用户可回复纠正要求。没有新增输出不等于卡住；同一偏差没有新证据或影响变化时不重复提醒。
-- 转发用户的纠正要求：先核对轮次，活跃时用 `turn/steer`：`{"threadId":"...","expectedTurnId":"正在执行的轮次ID","input":[{"type":"text","text":"用户的纠正要求"}]}`；已结束时核对最新结果，用原 thread 的 `turn/start` 传入仍需执行的要求。引导失败先核对接收状态，避免重复提交；后续轮询检查纠正是否生效。
+- 转发用户的纠正要求：先核对轮次，活跃时用 `turn/steer`：`{"threadId":"...","expectedTurnId":"正在执行的轮次ID","input":[{"type":"text","text":"用户的纠正要求"}]}`；已结束时核对最新结果，先确认桥接已订阅原 thread，再用 `codex queue` 传入仍需执行的要求。引导失败先核对接收状态，避免重复提交；后续轮询检查纠正是否生效。
 - 用户要求停止时，发送 `turn/interrupt`，参数为 `threadId` 与 `turnId`；看到完成事件的中断状态后才报告已停止。
 
 完成判定只看目标 turn 的 `turn/completed`，核对 thread、turn 和 `status`，区分 completed、failed、interrupted；`thread/status/changed` 的 idle、`item/completed` 或普通消息不能代替完成事件。
@@ -128,14 +156,16 @@ python3 "$CODEX_SKILL_DIR/scripts/bridge.py" poll --thread <会话ID> --cursor 0
 
 ## 4. 审批、输入与结果
 
-人工处理项同时检查 `pending_requests`、`question_messages` 和普通消息中的提问。异步提问是带 `questions` 的 agentMessage，即使 `pending_requests` 为空也可能需要答复。`followup_observed_answer_unconfirmed` 只表示后来出现了用户消息，仍需核对是否回答了问题。
+答复、追加指示和中断命令见 [人工处理模板](references/cli-examples.md#人工处理回复服务请求)。
+
+人工处理项同时检查 `urgent_events`、`pending_requests`、`question_messages` 和普通消息中的提问。异步提问是带 `questions` 的 agentMessage，即使 `pending_requests` 为空也可能需要答复。`followup_observed_answer_unconfirmed` 只表示后来出现了用户消息，仍需核对是否回答了问题；对应用户消息读过后不会持续触发提前返回。下一轮开始后，上一轮提问不再出现在当前提问快照中。断线失效的请求保留供核对，不作为新连接的待审批项反复唤醒。
 
 按上图暂停时，以当前轮最后一条消息呈现具体问题和可选项，不附 thread ID、turn ID、请求 ID 等元数据，并提供两种方式：
 
 1. **在 Claude 回答**：核对最新状态后，仍待响应的服务请求按 [协议说明](references/protocol.md#提交用户答复) 提交；异步或普通文字答案按第 3 节的消息转发方式传入原 thread，不调用 `respond`。恢复轮询后核对接收结果。
 2. **自行处理后告知 Claude**：收到“已处理，可以继续”后恢复查询，核对处理结果；仍有未解决问题时再次询问并暂停。“已处理”不是代为提交答案或审批决定的依据；仅说“我去处理”则继续等待。
 
-暂停前保存 thread ID、turn ID、游标和待处理项。Codex 的独立工作仍可能继续；恢复时已解决的请求不重复提交，已过期或断线失效的请求不使用旧 ID 回答。
+暂停前保存 thread ID、turn ID、游标和待处理项。Codex 的独立工作仍可能继续；若等待用户期间轮次结束，桥接会自动退出。恢复时先读取保存的事件；需要实时连接或提交答复时重新 `start` 并核对会话状态。已解决的请求不重复提交，已过期或断线失效的请求不使用旧 ID 回答。
 
 主助手不自动审批、不猜答案、不修改审批策略来避开阻塞。用户未回复不构成新增授权。
 
