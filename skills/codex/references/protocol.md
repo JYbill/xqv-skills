@@ -13,6 +13,8 @@
 
 CLI 已覆盖的派发和归档分别使用 `codex queue`、`codex archive`；桥接 RPC 不再开放 `turn/start`、`thread/archive`。持续追踪必须先通过桥接创建或恢复会话、确认订阅，再从 CLI 派发。保存事件中的 `turn/started` 用于核对实际 turn ID；排队消息 ID 不能替代轮次 ID。
 
+新会话的显式模型、推理强度或服务等级随 `thread/start` 传入并核对响应；已有会话通过 `settings.py` 短连接调用 `thread/settings/update`，回读核对后再使用 CLI 派发；Fast 为 `serviceTier:"priority"`，普通模式为 `serviceTier:null`，省略则不改。脚本只接受这些设置，不修改审批或沙箱，也不启动桥接。调用与失败处理见 [设置模板](cli-examples.md#显式修改模型推理强度或服务等级)。
+
 以下桥接连接、轮询和答复说明适用于模式 1；模式 2 的故障应先核对 CLI 返回和原会话，不自动切换成持续追踪。
 
 ## 脚本结构
@@ -25,6 +27,7 @@ scripts/
   client.py     连接后台、启动检查、离线读取事件
   daemon.py     接收 Codex 事件、处理请求、管理进程退出
   store.py      SQLite、分页、提问状态和批量等待
+  settings.py   显式模型、推理强度和服务等级的短连接更新及回读
   transport.py  App Server 的 Unix WebSocket 通信
   config.py     共享路径、超时、接口白名单和 JSON 编码
 ```
@@ -113,6 +116,13 @@ codex app-server generate-json-schema --out <临时目录> --experimental
 - 本机 CLI 0.162.1 的 `codex queue` 在约 0.39 秒内提交并退出，测试轮次约 8.6 秒后完成；派发客户端退出未阻止该测试任务继续执行。
 - 短连接新建会话后通过 CLI 仅派发的流程实测成功，最终得到预期回复；测试会话已归档。仅派发后遇到真实审批、长期排队和断线恢复的行为未实测。
 - 27 项桥接离线测试通过，覆盖事件条数等待、紧急事件跨页返回、桥接进程退出后读取 SQLite。桥接进程退出测试使用真实本地进程和 socket，Codex 后端为模拟；不等同于真实模型端到端验证。
+
+2026-10-12 已完成显式设置修复验证（CLI 与共享 App Server 均为 0.162.1）：
+
+- 本地测试服务抓取确认：`codex queue --remote` 的 `-m`、`-c model_reasoning_effort=...` 未进入请求，CLI 仍返回入队成功。skill 改为在创建时传入设置，或通过 `settings.py` 更新已有会话；未修改原生 CLI。
+- 真实服务验证新会话 high + Fast、high + 普通模式的创建响应；普通模式请求 `serviceTier:null`，当前服务回读为 `"default"`。没有首轮历史的新会话直接 `thread/resume` 会失败，因此新会话在创建时传设置。
+- 真实已有会话验证 Fast → 普通 → Fast，以及只改推理强度时保留服务等级；原生 queue 派发的 high + Fast、low + 普通轮次均完成，派发后回读设置保持一致。轮次历史确认 effort 为 high/low；该版本历史不记录 service tier，服务等级以服务端配置回读为依据，不据此声称已核验上游计费或排队优先级。测试会话已归档。
+- 41 项离线测试通过，其中 6 项设置测试覆盖切换、字段省略、模型设置、无效参数、服务拒绝、静默忽略与断线；设置更新失败时不派发、不自动重试。
 
 来源：
 - https://learn.chatgpt.com/docs/app-server

@@ -27,7 +27,7 @@ THREAD_ID="实际会话ID"
 
 当前已验证的 `codex queue` 需要已有会话 ID。新会话须先核对目录与信任，再用一次性 Python 调用 `thread/start`；复用 `transport.py` 的 WebSocket 传输类不会启动后台服务或写 SQLite。创建结果未知时先查会话列表，不自动重复创建。
 
-`create.json`：
+`create.json`（有显式模型、强度或模式要求时，按 [新会话设置](#新会话) 添加字段）：
 
 ```json
 {"cwd":"/absolute/project/path"}
@@ -66,9 +66,54 @@ PY
 
 从返回的 `thread.id` 保存 `THREAD_ID`。这一段仅用于 CLI 尚未覆盖的会话创建，不发送模型任务；随后按下方 [直接派发](#直接派发) 提交。
 
+## 显式修改模型、推理强度或服务等级
+
+适用：用户明确要求改变目标会话的模型、推理强度、Fast 或普通模式。两种派发模式共用；没有明确要求时跳过，保留原配置。
+
+本机 CLI 0.162.1 的 `codex queue --remote` 虽接受 `-m`、`-c model_reasoning_effort=...` 等选项，但入队请求不会携带这些设置。新会话在创建时传入设置并核对响应；已有会话用短连接更新并回读，成功后才执行下方 `codex queue`。
+
+### 已有会话
+
+将用户明确要求的字段写入 `settings.json`；以下例子表示 high 推理强度和 Fast：
+
+```json
+{"threadId":"实际会话ID","effort":"high","serviceTier":"priority"}
+```
+
+- `model`：用户指定的模型标识；未指定则省略。
+- `effort`：用户指定且该模型支持的推理强度；未指定则省略。Fast 不等于降低推理强度。
+- `serviceTier`：Fast 为 `"priority"`；普通模式为 JSON `null`，显式清除 Fast；服务回读可能返回 `null` 或 `"default"`，两者均按普通模式核对。未指定则省略，保留原模式。请求中不要把普通模式写成 `"default"`、`"normal"` 或字符串 `"null"`。
+
+例如只关闭 Fast，保留模型和推理强度：
+
+```json
+{"threadId":"实际会话ID","serviceTier":null}
+```
+
+```bash
+python3 "$CODEX_SKILL_DIR/scripts/settings.py" \
+  --params-file "$CODEX_INPUT_DIR/settings.json"
+```
+
+脚本通过现有共享服务恢复目标会话，调用 `thread/settings/update`，再恢复读取并核对显式字段；不启动桥接、不写 SQLite、不派发消息。只有退出码为 0 且 `verified=true` 才继续派发。持续追踪模式仍须先完成原桥接的订阅；该短连接不能替代事件追踪。
+
+刚创建且没有执行过首轮的会话可能尚无历史文件，`thread/resume` 会失败；这类会话按下方“新会话”在创建时传设置，不先发一条占位消息。
+
+设置影响后续轮次，不修改正在执行的轮次，并非单条排队消息的独立配置；有旧消息待执行或其他客户端同时改设置时，先协调目标会话，不能保证设置只作用于本次消息。服务拒绝、不支持、回读不符或断线时停止派发，核对原会话，不自动重试或改用 `queue -c`。短连接没有操作去重表。
+
+### 新会话
+
+两种派发模式都在 `thread/start` 的 `create.json` 中加入用户指定的字段。例如 high + Fast：
+
+```json
+{"cwd":"/absolute/project/path","config":{"model_reasoning_effort":"high"},"serviceTier":"priority"}
+```
+
+`model` 放在顶层；推理强度放在 `config.model_reasoning_effort`；Fast 使用顶层 `serviceTier:"priority"`，普通模式使用顶层 `serviceTier:null`。未指定的字段省略，不写入默认值。按各模式的创建模板调用后，核对响应中的 `model`、`reasoningEffort` 和 `serviceTier`；普通模式回读允许 `null` 或 `"default"`。响应不符时保留会话 ID、停止派发，不重复创建。
+
 ## 直接派发
 
-适用：两种模式共用。模式 1 先完成桥接订阅，提交后继续轮询；模式 2 提交成功后结束回复。
+适用：两种模式共用。有显式配置要求时，先完成 [设置更新与核对](#显式修改模型推理强度或服务等级)。模式 1 先完成桥接订阅，提交后继续轮询；模式 2 提交成功后结束回复。
 
 任务正文写入 `task.json`，不把用户原文直接拼进 shell：
 

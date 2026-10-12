@@ -17,7 +17,7 @@ python3 "$CODEX_SKILL_DIR/scripts/bridge.py" status
 
 适用：用户选择模式 1，且没有可续接的任务会话。先完成目录与信任检查。
 
-写入 `create.json`：
+写入 `create.json`；有显式模型、推理强度或模式要求时，按 [新会话设置](cli-examples.md#新会话) 添加字段，并在派发前核对创建响应：
 
 ```json
 {"cwd":"/absolute/project/path"}
