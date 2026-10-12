@@ -109,9 +109,9 @@ def poll_events(store, req, connected, epoch):
     """Read a batch, waiting only while the supplied connection is alive."""
     if any(key in req for key in ('wait', 'limit', 'until_idle')):
         raise ValueError('Use event_limit instead of wait, limit or until_idle.')
-    limit = req.get('event_limit', 20)
-    if type(limit) is not int or not 1 <= limit <= 100:
-        raise ValueError('event_limit must be an integer from 1 to 100.')
+    limit = req.get('event_limit', 50)
+    if type(limit) is not int or not 1 <= limit <= 200:
+        raise ValueError('event_limit must be an integer from 1 to 200.')
     tid = req.get('thread')
     if not isinstance(tid, str) or not tid.strip():
         raise ValueError('poll requires a non-empty Codex thread ID (--thread).')

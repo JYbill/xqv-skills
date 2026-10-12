@@ -19,8 +19,8 @@ def main():
     q = sub.add_parser('poll')
     q.add_argument('--thread', required=True, help='Codex thread ID to read')
     q.add_argument('--cursor', type=int, default=0)
-    q.add_argument('--event-limit', type=int, choices=range(1, 101), default=20,
-                   metavar='1..100', help='Wait for this many key events (default: 20); urgent events return early')
+    q.add_argument('--event-limit', type=int, choices=range(1, 201), default=50,
+                   metavar='1..200', help='Wait for this many key events (default: 50); urgent events return early')
     r = sub.add_parser('rpc')
     r.add_argument('--method', choices=sorted(RPC_METHODS), required=True)
     r.add_argument('--params-file', required=True, help='JSON file, or - for stdin')

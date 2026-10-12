@@ -97,12 +97,37 @@ class Tests(unittest.TestCase):
                 patch('bridge.client',return_value={}) as client, patch('builtins.print'):
             main()
             self.assertNotIn('summary',client.call_args.args[0])
-            self.assertEqual(client.call_args.args[0]['event_limit'],20)
+            self.assertEqual(client.call_args.args[0]['event_limit'],50)
         for flag in ['--summary','--no-summary','--wait','--limit','--until-idle']:
             with self.subTest(flag=flag), patch.object(sys,'argv',['bridge.py','poll','--thread','t',flag]), \
                     patch('sys.stderr'), self.assertRaises(SystemExit) as error:
                 main()
             self.assertEqual(error.exception.code,2)
+    def test_cli_event_limit_range(self):
+        for value in [1,101,200]:
+            with self.subTest(value=value), patch.object(sys,'argv',[
+                    'bridge.py','poll','--thread','t','--event-limit',str(value)]), \
+                    patch('bridge.client',return_value={}) as client, patch('builtins.print'):
+                main()
+                self.assertEqual(client.call_args.args[0]['event_limit'],value)
+        for value in [0,201]:
+            with self.subTest(value=value), patch.object(sys,'argv',[
+                    'bridge.py','poll','--thread','t','--event-limit',str(value)]), \
+                    patch('sys.stderr'), self.assertRaises(SystemExit) as error:
+                main()
+            self.assertEqual(error.exception.code,2)
+    def test_poll_default_and_explicit_page_sizes(self):
+        for _ in range(201):
+            self.store.event('e',{'method':'item/completed','params':{'threadId':'t'}})
+        for value in [None,1,101,200]:
+            with self.subTest(value=value):
+                req={'op':'poll','thread':'t'}
+                if value is not None:
+                    req['event_limit']=value
+                result=self.poll_bridge().handle(req)
+                self.assertEqual(len(result['events']),50 if value is None else value)
+                self.assertEqual(result['return_reason'],'event_limit')
+                self.assertTrue(result['has_more'])
     def test_poll_requires_thread(self):
         b=self.poll_bridge()
         for tid in [None, '', '   ', 123]:
@@ -146,7 +171,7 @@ class Tests(unittest.TestCase):
             self.assertTrue(r['pending_requests'] or r['question_messages'])
     def test_poll_timeout_and_event_limit_validation(self):
         b=self.poll_bridge()
-        for value in [0,101,1.5,True,'20']:
+        for value in [0,201,1.5,True,'50']:
             with self.assertRaises(ValueError):
                 b.handle({'op':'poll','thread':'t','event_limit':value})
         self.emit_later([(.05,{'method':'skills/changed','params':{}})])

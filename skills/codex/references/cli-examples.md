@@ -69,10 +69,10 @@ python3 "$CODEX_SKILL_DIR/scripts/bridge.py" rpc --method thread/resume \
 ```bash
 CURSOR=0
 python3 "$CODEX_SKILL_DIR/scripts/bridge.py" poll \
-  --thread "$THREAD_ID" --cursor "$CURSOR" --event-limit 20
+  --thread "$THREAD_ID" --cursor "$CURSOR" --event-limit 50
 ```
 
-首次接入用 `0`；后续把 `CURSOR` 更新为返回的 `cursor`。省略 `--event-limit` 也是 20，范围为 1～100。检查 `events`、`urgent_events`、`pending_requests`、`question_messages`；跨页紧急事件按事件游标去重。`has_more=true` 时继续读取，不能因为已看到完成事件就丢弃尚未读取的工具结果。单次内部等待最多 100 秒，客户端超时为 110 秒，宿主工具超时应大于 110 秒。主 Agent 或宿主可能终止长时间没有输出的调用；未收到返回时保留原游标，核对状态后再查询，不重复派发。内部超时不代表完成，按 [轮询协议](protocol.md#增量轮询) 处理返回原因。
+首次接入用 `0`；后续把 `CURSOR` 更新为返回的 `cursor`。省略 `--event-limit` 也是 50，范围为 1～200。检查 `events`、`urgent_events`、`pending_requests`、`question_messages`；跨页紧急事件按事件游标去重。`has_more=true` 时继续读取，不能因为已看到完成事件就丢弃尚未读取的工具结果。单次内部等待最多 100 秒，客户端超时为 110 秒，宿主工具超时应大于 110 秒。主 Agent 或宿主可能终止长时间没有输出的调用；未收到返回时保留原游标，核对状态后再查询，不重复派发。内部超时不代表完成，按 [轮询协议](protocol.md#增量轮询) 处理返回原因。
 
 ## 仅派发：新会话或已有会话
 
