@@ -82,7 +82,7 @@ description: Claude 或其他主助手接收用户消息时，默认通过本机
 
 需要本机 Python 3、可执行的 `codex` 和已运行的共享 App Server。脚本兼容 macOS/Linux 的 Unix socket，不依赖第三方 Python 包。对外统一使用 `scripts/bridge.py`，模块职责见 [脚本结构](references/protocol.md#脚本结构)；安装或复制时保留整个 `scripts/` 目录。
 
-按 [连接模板](references/cli-examples.md#持续追踪连接) 设置技能目录并运行 `start`、`status`。
+按 [准备参数](references/cli-examples.md#准备参数) 设置技能目录，再按 [连接模板](references/tracking-examples.md#持续追踪连接) 运行 `start`、`status`。
 
 `start` 只启动桥接进程，连接既有共享服务，不启动新的 Codex 引擎。`start` 仅返回 `connected`、`epoch`，失败时附带 `error`；完整连接信息使用 `status`。确认 `connected=true` 且无 `error`。若服务未启动，在用户已授权启动执行环境的情况下运行 `codex app-server daemon start`；已有运行任务时不更新或重启后台服务。
 
@@ -101,9 +101,9 @@ description: Claude 或其他主助手接收用户消息时，默认通过本机
 3. 未信任时询问用户是否信任该目录；信任属于安全设置，未获明确同意不写入。同意后只在 `$CODEX_HOME/config.toml` 追加一段 `[projects."<绝对路径>"]` 加 `trust_level = "trusted"`，写前备份，不改动其他配置；bridge 不放行 `config/value/write`，不要绕过白名单。
 4. 目录缺失或未信任且用户未同意时，不新建 thread，说明原因后继续其他已授权工作。
 
-按 [新建并派发模板](references/cli-examples.md#持续追踪新建会话并派发) 通过桥接 `thread/start` 创建并订阅会话，再用 `codex queue` 派发。保存 thread ID、有效配置，从后续 `turn/started` 或历史查询取得 turn ID；CLI 返回的 queued message ID 不是 turn ID。仅在创建后的这次回复提供 thread ID。发送前确认目录和目标服务，跨客户端验证范围见 [协议说明](references/protocol.md#已验证与未验证)。
+按 [新建并派发模板](references/tracking-examples.md#持续追踪新建会话并派发) 通过桥接 `thread/start` 创建并订阅会话，再用 `codex queue` 派发。保存 thread ID、有效配置，从后续 `turn/started` 或历史查询取得 turn ID；CLI 返回的 queued message ID 不是 turn ID。仅在创建后的这次回复提供 thread ID。发送前确认目录和目标服务，跨客户端验证范围见 [协议说明](references/protocol.md#已验证与未验证)。
 
-已有任务按 [续接模板](references/cli-examples.md#持续追踪续接已有会话) 先调用 `thread/read`（参数 `{"threadId":"..."}`）查看状态；需要接收它的实时事件时，调用同一服务的 `thread/resume`，仅传 `threadId` 和 `excludeTurns:true`，不覆盖配置。恢复不会自动发送新任务；需要新一轮时用 `codex queue`。当前轮次仍在执行时，用户纠正要求用 `turn/steer`，不以 queue 代替。先确认订阅成功再派发，避免漏接快速完成的轮次。
+已有任务按 [续接模板](references/tracking-examples.md#持续追踪续接已有会话) 先按 [查询模板](references/session-examples.md#查询会话与历史) 调用 `thread/read`（参数 `{"threadId":"..."}`）查看状态；需要接收它的实时事件时，调用同一服务的 `thread/resume`，仅传 `threadId` 和 `excludeTurns:true`，不覆盖配置。恢复不会自动发送新任务；需要新一轮时用 `codex queue`。当前轮次仍在执行时，用户纠正要求用 `turn/steer`，不以 queue 代替。先确认订阅成功再派发，避免漏接快速完成的轮次。
 
 通过桥接提交的所有写操作必须有唯一 `--operation-id`。同一操作超时后用原 ID、原参数重试，桥接会返回已保存结果；`thread/resume` 的去重限定在同一连接，重连后会重新订阅；不同操作用新 ID。后端超时或断线导致结果未知时，先查询原 thread 和 `bridge/lateResponse`，不能换 ID 重发。新建 thread 超时且未取得 ID 时，先核对 `thread/list` 和事件。
 
@@ -111,7 +111,7 @@ description: Claude 或其他主助手接收用户消息时，默认通过本机
 
 用户要求归档时，先用 `thread/read` 核对目标会话和当前共享服务，再用原生 `codex archive`。归档后用 `thread/list` 的 `archived:true` 查询并核对目标 ID，确认成功后再回报。CLI 不使用桥接的 `--operation-id`，结果不明先查询状态，不自动重发。仅归档不恢复会话、不派发新任务。
 
-调用和归档后的查询见 [归档模板](references/cli-examples.md#归档会话)。
+调用和归档后的查询见 [归档模板](references/session-examples.md#归档会话)。
 
 ## 3. 动态轮询与纠偏
 
@@ -146,7 +146,7 @@ description: Claude 或其他主助手接收用户消息时，默认通过本机
                               --> 核对结果与未完成项，再向用户回报
 ```
 
-调用方式见 [读取进展模板](references/cli-examples.md#持续追踪读取进展)。
+调用方式见 [读取进展模板](references/tracking-examples.md#持续追踪读取进展)。
 
 每次 `poll` 必须通过 `--thread` 指定 Codex 会话 ID，并用上次返回的 `cursor` 继续，游标按任务保存。`--event-limit` 范围为 1～200，默认 50，既是等待条数，也是每页关键事件上限。已有记录也计入条数；固定过滤 delta、额度、token 用量和技能变更通知，以及 `summary`、`content` 均为空的 reasoning（started/completed），被过滤的事件不占条数。
 
@@ -166,7 +166,7 @@ description: Claude 或其他主助手接收用户消息时，默认通过本机
 
 ## 4. 审批、输入与结果
 
-答复、追加指示和中断命令见 [人工处理模板](references/cli-examples.md#人工处理回复服务请求)。
+答复、追加指示和中断命令见 [人工处理模板](references/tracking-examples.md#人工处理回复服务请求)。
 
 人工处理项同时检查 `urgent_events`、`pending_requests`、`question_messages` 和普通消息中的提问。异步提问是带 `questions` 的 agentMessage，即使 `pending_requests` 为空也可能需要答复。`followup_observed_answer_unconfirmed` 只表示后来出现了用户消息，仍需核对是否回答了问题；对应用户消息读过后不会持续触发提前返回。下一轮开始后，上一轮提问不再出现在当前提问快照中。断线失效的请求保留供核对，不作为新连接的待审批项反复唤醒。
 

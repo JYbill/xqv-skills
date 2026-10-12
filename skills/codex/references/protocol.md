@@ -88,7 +88,7 @@ codex app-server generate-json-schema --out <临时目录> --experimental
 
 例如命令审批的具体决定必须按当前 `CommandExecutionRequestApprovalResponse` 校验；用户输入按 `ToolRequestUserInputResponse`。不要默认“本次允许”意味着“整场会话允许”。
 
-把准确响应对象写入私有 JSON 文件，按 [回复服务请求模板](cli-examples.md#人工处理回复服务请求) 提交。
+把准确响应对象写入私有 JSON 文件，按 [回复服务请求模板](tracking-examples.md#人工处理回复服务请求) 提交。
 
 `--human-confirmed` 是对已获得用户答复的声明，不是获取许可的替代品。脚本只能核对请求是否属于当前连接且未解决，不能判断自然语言授权是否充分。
 

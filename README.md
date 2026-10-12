@@ -17,7 +17,7 @@
 
 Claude 或其他主助手收到用户消息时，默认通过本机共享 Codex App Server 交给 Codex 处理，包括提问、讨论和执行任务，无需用户点名 Codex；用户明确要求主助手自行处理时除外。手机可通过 ChatGPT SSH 访问同一会话。每个新任务由用户明确选择“持续追踪”或“仅派发”，不设默认模式。持续追踪时主助手读取进展、转发用户纠正要求并核对结果；仅派发由主助手直接调用 `codex queue`，提交后结束。
 
-两种模式的 ASCII 流程图及调用方式见 [SKILL.md](skills/codex/SKILL.md)，命令与 JSON 参数模板见 [cli-examples.md](skills/codex/references/cli-examples.md)，协议、故障处理和验证范围见 [protocol.md](skills/codex/references/protocol.md)。持续追踪以 `bridge.py` 为统一入口，客户端、后台服务、存储和通信已拆分，安装时需保留整个技能目录。默认累计 20 条关键事件返回，审批、结构化提问和轮次结束提前返回；轮次结束后桥接退出，仍可读取临时 SQLite。仅派发使用原生 Codex CLI，不启动桥接、不写桥接 SQLite。主助手不自动代用户审批或回答。
+两种模式的 ASCII 流程图及调用方式见 [SKILL.md](skills/codex/SKILL.md)，公共参数与仅派发模板见 [cli-examples.md](skills/codex/references/cli-examples.md)，持续追踪与人工处理见 [tracking-examples.md](skills/codex/references/tracking-examples.md)，查询与归档见 [session-examples.md](skills/codex/references/session-examples.md)，协议、故障处理和验证范围见 [protocol.md](skills/codex/references/protocol.md)。持续追踪以 `bridge.py` 为统一入口，客户端、后台服务、存储和通信已拆分，安装时需保留整个技能目录。默认累计 50 条关键事件返回，审批、结构化提问和轮次结束提前返回；轮次结束后桥接退出，仍可读取临时 SQLite。仅派发使用原生 Codex CLI，不启动桥接、不写桥接 SQLite。主助手不自动代用户审批或回答。
 
 ### coding-with-plan
 
