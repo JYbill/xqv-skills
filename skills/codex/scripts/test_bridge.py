@@ -92,6 +92,115 @@ class Tests(unittest.TestCase):
         self.assertEqual([x['event']['method'] for x in result['events']],['turn/completed'])
         self.assertEqual(result['cursor'],3)
         self.assertFalse(result['has_more'])
+    def test_poll_compact_items_and_full(self):
+        originals=[]
+        for status, code, size in [('completed',0,200),('completed',0,201),('failed',1,300)]:
+            item={'type':'commandExecution','id':str(size),'command':'echo test','cwd':'/tmp',
+                'status':status,'exitCode':code,'durationMs':10,'aggregatedOutput':'中'*size,
+                'pluginId':'p','scriptPath':'s','processId':42,'source':'agent','commandActions':[]}
+            originals.append(item)
+            self.store.event('e',{'method':'item/completed','params':{'threadId':'t','item':item}})
+        user={'type':'userMessage','id':'u','content':[{'type':'text','text':'手机消息'}]}
+        self.store.event('e',{'method':'item/completed','params':{'threadId':'t','item':user}})
+        b=self.poll_bridge(); b.alive=False
+        result=b.handle({'op':'poll','thread':'t'})
+        items=[x['event']['params']['item'] for x in result['events']]
+        for item, original in zip(items, originals):
+            size=len(original['aggregatedOutput'])
+            self.assertEqual(item['aggregatedOutput'],'中'*200+(f'…（共 {size} 字符，已截断）' if size>200 else ''))
+            self.assertEqual(set(item),{'id','type','command','cwd','status','exitCode','durationMs','aggregatedOutput'})
+        self.assertEqual(items[-1],{'type':'userMessage','id':'u','text':'收到用户消息','character_count':4})
+        for key in ('question_messages','pending_requests','urgent_events','coverage'):
+            self.assertNotIn(key,result)
+        full=b.handle({'op':'poll','thread':'t','full':True})
+        self.assertEqual([x['event']['params']['item'] for x in full['events']],originals+[user])
+        self.assertIn('coverage',full)
+        raw=[json.loads(x[0])['params']['item'] for x in self.store.db.execute('SELECT body FROM events')]
+        self.assertEqual(raw,originals+[user])
+    def test_empty_reasoning_does_not_count_or_block_cursor(self):
+        for method in ['item/started','item/completed']:
+            self.store.event('e',{'method':method,'params':{'threadId':'t','questions':[{}],
+                'item':{'type':'reasoning','summary':[],'content':[]}}})
+        self.store.event('e',{'method':'item/completed','params':{'threadId':'t',
+            'item':{'type':'reasoning','summary':['useful'],'content':[]}}})
+        self.store.event('e',{'method':'item/completed','params':{'threadId':'t',
+            'item':{'type':'agentMessage','id':'a','text':'final'}}})
+        b=self.poll_bridge()
+        for full in [False,True]:
+            page=b.handle({'op':'poll','thread':'t','event_limit':1,'full':full})
+            self.assertEqual([x['cursor'] for x in page['events']],[3])
+            self.assertEqual(page['cursor'],3)
+            self.assertEqual(page['return_reason'],'event_limit')
+            self.assertNotIn('urgent_events',page)
+            page=b.handle({'op':'poll','thread':'t','cursor':3,'event_limit':1,'full':full})
+            self.assertEqual([x['cursor'] for x in page['events']],[4])
+            self.assertFalse(page['has_more'])
+    def test_turn_reply_deduplication_respects_pages(self):
+        self.store.event('e',{'method':'item/completed','params':{'threadId':'t','item':{'id':'tool'}}})
+        reply={'type':'agentMessage','id':'a','text':'最终回复'*100}
+        self.store.event('e',{'method':'item/completed','params':{'threadId':'t','turnId':'v','item':reply}})
+        self.store.event('e',{'method':'turn/completed','params':{'threadId':'t',
+            'turn':{'id':'v','status':'completed','error':None,'items':[reply]}}})
+        b=self.poll_bridge()
+        first=b.handle({'op':'poll','thread':'t','event_limit':1})
+        self.assertEqual(first['urgent_events'][0]['event']['params']['turn']['items'],[reply])
+        second=b.handle({'op':'poll','thread':'t','cursor':1,'event_limit':1})
+        self.assertEqual(second['events'][0]['event']['params']['item'],reply)
+        self.assertEqual(second['urgent_events'][0]['event']['params']['turn'],
+            {'id':'v','status':'completed','error':None})
+        last=b.handle({'op':'poll','thread':'t','cursor':2})
+        self.assertEqual(last['urgent_events'],[{'cursor':3,'method':'turn/completed'}])
+        self.assertNotIn('items',last['events'][0]['event']['params']['turn'])
+        together=b.handle({'op':'poll','thread':'t'})
+        self.assertEqual(json.dumps(together,ensure_ascii=False).count(reply['text']),1)
+        # A completion-only reply must remain available even without item/completed.
+        fallback={'type':'agentMessage','id':'b','text':'completion only'}
+        self.store.event('e',{'method':'turn/completed','params':{'threadId':'t',
+            'turn':{'id':'other','status':'failed','error':{'message':'failed'},'items':[fallback]}}})
+        page=b.handle({'op':'poll','thread':'t','cursor':3})
+        self.assertEqual(page['events'][0]['event']['params']['turn']['items'],[fallback])
+        self.assertIn('coverage',page)
+    def test_cli_full_and_start_output(self):
+        with patch.object(sys,'argv',['bridge.py','poll','--thread','t','--full']), \
+                patch('bridge.client',return_value={}) as client, patch('builtins.print'):
+            self.assertEqual(main(),0)
+            self.assertTrue(client.call_args.args[0]['full'])
+        for connected, error in [(True,False),(False,False),(True,True)]:
+            status={'connected':connected,'epoch':'e','pid':42,'initialization':{'large':'data'}}
+            expected={'connected':connected,'epoch':'e'}
+            if error:
+                status['error']=expected['error']='failed'
+            with patch.object(sys,'argv',['bridge.py','start']), \
+                    patch('bridge.start',return_value=status), patch('builtins.print') as output:
+                self.assertEqual(main(),0 if connected and not error else 1)
+                self.assertEqual(json.loads(output.call_args.args[0]),expected)
+            with patch.object(sys,'argv',['bridge.py','status']), \
+                    patch('bridge.client',return_value=status), patch('builtins.print') as output:
+                self.assertEqual(main(),0 if connected and not error else 1)
+                self.assertEqual(json.loads(output.call_args.args[0]),status)
+        with patch.object(sys,'argv',['bridge.py','start']), \
+                patch('bridge.start',side_effect=RuntimeError('failed')), patch('builtins.print') as output:
+            self.assertEqual(main(),1)
+            self.assertEqual(json.loads(output.call_args.args[0]),{'connected':False,'epoch':None,'error':'failed'})
+    def test_poll_errors_include_coverage(self):
+        for response in [{'error':'failed'}, RuntimeError('failed')]:
+            mocked=Mock(side_effect=response) if isinstance(response,Exception) else Mock(return_value=response)
+            with patch.object(sys,'argv',['bridge.py','poll','--thread','t']), \
+                    patch('bridge.client',mocked), patch('builtins.print') as output:
+                self.assertEqual(main(),1)
+                result=json.loads(output.call_args.args[0])
+                self.assertEqual(result['error'],'failed')
+                self.assertIn('coverage',result)
+    def test_turn_deduplication_keeps_other_turns_and_epochs(self):
+        reply={'type':'agentMessage','id':'same','text':'reply'}
+        self.store.event('old',{'method':'item/completed','params':{'threadId':'t','turnId':'v','item':reply}})
+        self.store.event('e',{'method':'item/completed','params':{'threadId':'t','turnId':'other','item':reply}})
+        self.store.event('e',{'method':'turn/completed','params':{'threadId':'t',
+            'turn':{'id':'v','status':'completed','error':None,'items':[reply]}}})
+        for full in [False,True]:
+            result=self.poll_bridge().handle({'op':'poll','thread':'t','full':full})
+            self.assertEqual(result['events'][-1]['event']['params']['turn']['items'],[reply])
+            self.assertEqual(result['urgent_events'],[{'cursor':3,'method':'turn/completed'}])
     def test_cli_has_no_filter_switch(self):
         with patch.object(sys,'argv',['bridge.py','poll','--thread','t']), \
                 patch('bridge.client',return_value={}) as client, patch('builtins.print'):
@@ -168,7 +277,7 @@ class Tests(unittest.TestCase):
             started=time.monotonic()
             r=self.poll_bridge().handle({'op':'poll','thread':tid})
             self.assertLess(time.monotonic()-started,1)
-            self.assertTrue(r['pending_requests'] or r['question_messages'])
+            self.assertTrue(r.get('pending_requests') or r.get('question_messages'))
     def test_poll_timeout_and_event_limit_validation(self):
         b=self.poll_bridge()
         for value in [0,201,1.5,True,'50']:

@@ -33,6 +33,8 @@ scripts/
 
 ## 连接和配置
 
+`start` 仅打印 `{connected, epoch}`，失败时附带 `error`；`status` 保持完整输出。`start` 仍仅在 `connected=true` 且不存在 `error` 时返回退出码 0。
+
 桥接直接连接 `$CODEX_HOME/app-server-control/app-server-control.sock`，使用 Unix socket 上的 WebSocket（HTTP Upgrade，客户端掩码帧，支持分片与 ping/pong）。手机 SSH 的 `codex app-server proxy` 转发的也是这一端点的 WebSocket 字节流，不能把它当成 JSONL stdio 服务。桥接自身与短时查询命令之间使用本地 Unix socket 和 JSONL，不暴露网络监听。
 
 后台服务可能缓存配置；用户修改配置后，用 `config/read` 和创建/恢复响应核对生效值，不自行重启正在执行的服务。
@@ -43,9 +45,18 @@ scripts/
 
 `poll` 必须指定非空的 Codex 会话 ID（`--thread`）。`--event-limit` 范围为 1～200，默认 50。积累到指定数量的关键事件时返回；人工审批、结构化提问、目标会话轮次结束或断线提前返回。内部保留 100 秒超时保护，客户端 socket 超时为 110 秒，调用工具的超时应大于 110 秒。主 Agent 或宿主工具可能因长时间没有输出而终止调用；没有输出本身不说明 Codex 卡住。这些超时设置只能限制等待时间，不能阻止宿主提前终止工具。客户端被终止后，先核对桥接和会话状态，再用最后确认的游标查询，不重新派发任务。旧的 `--wait`、`--until-idle`、`--limit` 已移除。
 
-`poll` 固定保留 `item/completed`、`thread/status/changed`、`turn/started`、`turn/completed`、服务请求与解决通知、提问、错误及桥接诊断，过滤 delta、`account/rateLimits/updated`、`thread/tokenUsage/updated`、`skills/changed` 等其他通知。条数按过滤后的事件计算，过滤不删除原始记录。
+`poll` 固定保留 `item/completed`、`thread/status/changed`、`turn/started`、`turn/completed`、服务请求与解决通知、提问、错误及桥接诊断，过滤 delta、`account/rateLimits/updated`、`thread/tokenUsage/updated`、`skills/changed` 等其他通知。`item/started` 与 `item/completed` 中 `summary`、`content` 均为空的 reasoning 也被过滤。条数按过滤后的事件计算，空 reasoning 不占 `--event-limit`，过滤不删除原始记录。
 
-`events` 按条数分页；`urgent_events` 单独返回游标之后的紧急事件，包含后续页中的审批、结构化提问和完成事件。两者可能重复，按事件 `cursor` 去重。`pending_requests` 与 `question_messages` 仍是独立状态快照，可能来自游标之前；提交答复前核对最新状态。旧连接的失效请求不会持续唤醒新的 `poll`；已出现后续用户消息的提问在该消息读过后也不再持续唤醒，但仍保留“答复尚未核实”的标记。新轮次开始会清除上一轮提问快照。
+`events` 按条数分页；`urgent_events` 单独返回游标之后的紧急事件，包含后续页中的审批、结构化提问和完成事件。若紧急事件已在本页 `events` 中，`urgent_events` 仅返回 `{cursor, method}` 引用；只有后续页的紧急事件才带完整事件结构（内容仍遵循下述精简规则）。跨页按事件 `cursor` 去重。`pending_requests` 与 `question_messages` 仍是独立状态快照，可能来自游标之前；提交答复前核对最新状态。旧连接的失效请求不会持续唤醒新的 `poll`；已出现后续用户消息的提问在该消息读过后也不再持续唤醒，但仍保留“答复尚未核实”的标记。新轮次开始会清除上一轮提问快照。
+
+默认输出只在 poll 组装时精简，SQLite 的结构和原始事件不变，旧库无需迁移：
+
+- `commandExecution` 保留 `id`、`type`、`command`、`cwd`、`status`、`exitCode`、`durationMs` 和 `aggregatedOutput`；省略 `pluginId`、`scriptPath`、`processId`、`source`、`commandActions` 等字段。`aggregatedOutput` 成功失败均只保留前 200 字符，超过时追加 `…（共 N 字符，已截断）`，N 为原始字符数。
+- `userMessage` 保留事件及消息的 `id/type`，用 `text: "收到用户消息"` 和 `character_count` 替代正文；字符数按 `content` 文本段的字符数求和。提问快照仍使用原始用户消息计算，保留 `followup_observed_answer_unconfirmed` 行为。
+- `turn/completed` 保留 turn 的 `status/error`；`items` 中已通过已读页或本页 `item/completed:agentMessage` 投递的回复按连接、会话、轮次和消息 ID 去重。尚未投递的回复保留全文；剩余 items 为空时省略该字段，空 reasoning 同样移除。
+- `question_messages`、`pending_requests`、`urgent_events` 为空时不输出，缺省即为空。固定 `coverage` 说明仅在 `--full` 或返回错误事件时输出。
+
+`poll --full` 恢复命令完整输出及字段、用户消息全文，并显示 `coverage`；使用原游标可重读。它不改变关键事件过滤、分页、紧急引用和完成回复去重规则，也不恢复空数组字段。
 
 `cursor` 是原始事件序号。还有关键事件未返回时，游标停在本页最后一条普通分页记录；读完当前快照才推进到快照末尾，包含已过滤事件。紧急事件提前返回不推进分页游标，避免跳过普通记录。`has_more=true` 时继续翻页。
 

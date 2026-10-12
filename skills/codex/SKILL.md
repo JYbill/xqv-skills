@@ -84,7 +84,7 @@ description: Claude 或其他主助手接收用户消息时，默认通过本机
 
 按 [连接模板](references/cli-examples.md#持续追踪连接) 设置技能目录并运行 `start`、`status`。
 
-`start` 只启动桥接进程，连接既有共享服务，不启动新的 Codex 引擎。确认 `connected=true` 且初始化结果无错误。若服务未启动，在用户已授权启动执行环境的情况下运行 `codex app-server daemon start`；已有运行任务时不更新或重启后台服务。
+`start` 只启动桥接进程，连接既有共享服务，不启动新的 Codex 引擎。`start` 仅返回 `connected`、`epoch`，失败时附带 `error`；完整连接信息使用 `status`。确认 `connected=true` 且无 `error`。若服务未启动，在用户已授权启动执行环境的情况下运行 `codex app-server daemon start`；已有运行任务时不更新或重启后台服务。
 
 桥接进程持续接收通知和审批请求，默认在系统临时目录的 `codex-skill-<用户UID>/<CODEX_HOME哈希>/events.sqlite` 保存事件与操作结果。临时目录由 Python `tempfile.gettempdir()` 确定，同一用户、相同临时目录和 `CODEX_HOME` 的客户端使用同一路径。系统清理临时文件后，这些记录可能丢失。短命的查询命令退出不会断开桥接。桥接绑定由其创建或恢复的目标会话，并跟踪 `turn/started` 中的轮次 ID；收到匹配的 `turn/completed` 后保存事件并自动退出，SQLite 文件保留；退出后的 `poll` 直接读取文件，仍可继续分页。发起下一轮或恢复实时事件前，先重新执行 `start`，再按续接流程接入原 thread。一个桥接连接只接受一个目标会话，尝试创建或恢复另一会话会报错；并行任务需使用不同的 `CODEX_SKILL_STATE`。连接意外断开时桥接也会退出，`start` 等待旧进程释放连接后可重新启动。目录含任务内容，按本地私有数据处理。`CODEX_SKILL_STATE` 可指定其他本地状态根目录。修改 `CODEX_HOME` 后应确认手机仍连接相同服务。
 
@@ -148,9 +148,9 @@ description: Claude 或其他主助手接收用户消息时，默认通过本机
 
 调用方式见 [读取进展模板](references/cli-examples.md#持续追踪读取进展)。
 
-每次 `poll` 必须通过 `--thread` 指定 Codex 会话 ID，并用上次返回的 `cursor` 继续，游标按任务保存。`--event-limit` 范围为 1～200，默认 50，既是等待条数，也是每页关键事件上限。已有记录也计入条数；固定过滤 delta、额度、token 用量和技能变更通知。
+每次 `poll` 必须通过 `--thread` 指定 Codex 会话 ID，并用上次返回的 `cursor` 继续，游标按任务保存。`--event-limit` 范围为 1～200，默认 50，既是等待条数，也是每页关键事件上限。已有记录也计入条数；固定过滤 delta、额度、token 用量和技能变更通知，以及 `summary`、`content` 均为空的 reasoning（started/completed），被过滤的事件不占条数。
 
-未满指定条数时继续等待；人工审批、结构化提问、目标会话轮次结束或断线会提前返回。每次同时检查 `urgent_events`、`pending_requests` 和 `question_messages`：紧急事件即使位于后续分页，也会出现在 `urgent_events` 中，不受条数限制。按事件 `cursor` 去重；已解决的请求不重复处理。`has_more=true` 时继续用返回的游标读取普通事件，处理紧急事件不代表历史已读完。
+未满指定条数时继续等待；人工审批、结构化提问、目标会话轮次结束或断线会提前返回。每次同时检查 `urgent_events`、`pending_requests` 和 `question_messages`：紧急事件即使位于后续分页，也会出现在 `urgent_events` 中，不受条数限制。页内紧急事件只返回 `{cursor, method}` 引用，正文从 `events` 读取；页外紧急事件带正文，按事件 `cursor` 去重。已解决的请求不重复处理。`has_more=true` 时继续用返回的游标读取普通事件，处理紧急事件不代表历史已读完。
 
 - 内部单次等待上限为 100 秒，客户端连接超时为 110 秒，宿主工具超时应大于 110 秒。长时间没有输出不代表 Codex 卡住，但主 Agent 或宿主工具可能因此终止调用；该上限用于避免无限等待，不能保证调用不会被提前终止。若调用被终止，先核对桥接和会话状态，再沿用最后确认的游标查询，不重新派发任务。`return_reason` 表示事件数已满、需要检查紧急事件、断线或超时；超时不代表完成，继续用返回的游标查询。普通文字提问仍由主助手阅读消息识别。
 - 按上图决定继续或暂停。skill 不会在宿主结束当前轮后自动唤醒模型，也不能保证关闭 App 后继续监督。
@@ -161,6 +161,8 @@ description: Claude 或其他主助手接收用户消息时，默认通过本机
 完成判定只看目标 turn 的 `turn/completed`，核对 thread、turn 和 `status`，区分 completed、failed、interrupted；`thread/status/changed` 的 idle、`item/completed` 或普通消息不能代替完成事件。
 
 首次接入、事件缺口或重连后，通过 `thread/read` 与分页历史核对结果：`thread/turns/list` 参数可用 `{"threadId":"...","limit":20,"itemsView":"full","sortDirection":"desc"}`。不要把连接断开当作任务完成。更多故障与请求处理见 [协议与待处理请求](references/protocol.md)。
+
+默认 `poll` 将命令输出保留前 200 字符，截断时标明原始长度；用户消息只显示“收到用户消息”和字符数。需要完整内容时，用原游标加 `--full` 重读。完成事件保留 turn 的 `status/error`，去掉已通过消息事件投递的重复回复；未投递的回复保留全文。空的 `question_messages`、`pending_requests`、`urgent_events` 省略，缺省按空数组处理。`coverage` 说明仅在 `--full` 或出错时返回。SQLite 始终保存原始事件，具体输出规则见 [轮询协议](references/protocol.md#增量轮询)。
 
 ## 4. 审批、输入与结果
 

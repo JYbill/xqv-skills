@@ -24,7 +24,7 @@ python3 "$CODEX_SKILL_DIR/scripts/bridge.py" start
 python3 "$CODEX_SKILL_DIR/scripts/bridge.py" status
 ```
 
-确认 `connected=true` 且初始化没有错误。两条命令只连接既有 App Server，不创建模型任务。桥接退出后，新的 RPC 需要先重新 `start`；读取已保存事件的 `poll` 不需要重新启动。
+`start` 只返回 `connected`、`epoch`，失败附带 `error`；`status` 返回完整信息。确认 `connected=true` 且无 `error`。两条命令只连接既有 App Server，不创建模型任务。桥接退出后，新的 RPC 需要先重新 `start`；读取已保存事件的 `poll` 不需要重新启动。
 
 ## 持续追踪：新建会话并派发
 
@@ -72,7 +72,16 @@ python3 "$CODEX_SKILL_DIR/scripts/bridge.py" poll \
   --thread "$THREAD_ID" --cursor "$CURSOR" --event-limit 50
 ```
 
-首次接入用 `0`；后续把 `CURSOR` 更新为返回的 `cursor`。省略 `--event-limit` 也是 50，范围为 1～200。检查 `events`、`urgent_events`、`pending_requests`、`question_messages`；跨页紧急事件按事件游标去重。`has_more=true` 时继续读取，不能因为已看到完成事件就丢弃尚未读取的工具结果。单次内部等待最多 100 秒，客户端超时为 110 秒，宿主工具超时应大于 110 秒。主 Agent 或宿主可能终止长时间没有输出的调用；未收到返回时保留原游标，核对状态后再查询，不重复派发。内部超时不代表完成，按 [轮询协议](protocol.md#增量轮询) 处理返回原因。
+首次接入用 `0`；后续把 `CURSOR` 更新为返回的 `cursor`。省略 `--event-limit` 也是 50，范围为 1～200。检查 `events`、`urgent_events`、`pending_requests`、`question_messages`；后三个数组省略时按空数组处理。页内紧急事件只含 `{cursor, method}`，从 `events` 取正文；页外紧急事件带正文，跨页按事件游标去重。`has_more=true` 时继续读取，不能因为已看到完成事件就丢弃尚未读取的工具结果。单次内部等待最多 100 秒，客户端超时为 110 秒，宿主工具超时应大于 110 秒。主 Agent 或宿主可能终止长时间没有输出的调用；未收到返回时保留原游标，核对状态后再查询，不重复派发。内部超时不代表完成，按 [轮询协议](protocol.md#增量轮询) 处理返回原因。
+
+默认命令输出最多保留前 200 字符，截断后标注原始长度；用户消息只显示“收到用户消息”和字符数。完成事件去掉已投递的重复回复，仍保留最终回复全文的可用来源和 turn 的 `status/error`。读取完整命令字段、输出及用户消息正文时，使用需要重读页面的原游标：
+
+```bash
+python3 "$CODEX_SKILL_DIR/scripts/bridge.py" poll \
+  --thread "$THREAD_ID" --cursor "$CURSOR" --event-limit 50 --full
+```
+
+`--full` 仍过滤空 reasoning、使用紧急引用并去重完成回复。`coverage` 说明只在 `--full` 或出错时出现。
 
 ## 仅派发：新会话或已有会话
 

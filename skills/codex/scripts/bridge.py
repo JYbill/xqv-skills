@@ -8,6 +8,7 @@ import sys
 
 from client import client, start
 from config import RPC_METHODS, dumps
+from store import COVERAGE
 
 def main():
     os.umask(0o077)
@@ -18,6 +19,7 @@ def main():
     sub.add_parser('status')
     q = sub.add_parser('poll')
     q.add_argument('--thread', required=True, help='Codex thread ID to read')
+    q.add_argument('--full', action='store_true', help='Include complete item content and coverage')
     q.add_argument('--cursor', type=int, default=0)
     q.add_argument('--event-limit', type=int, choices=range(1, 201), default=50,
                    metavar='1..200', help='Wait for this many key events (default: 50); urgent events return early')
@@ -37,14 +39,27 @@ def main():
         serve()
         return
     if cmd == 'start':
-        result = start()
-        print(dumps(result))
+        try:
+            result = start()
+        except Exception as exc:
+            result = {'connected': False, 'error': str(exc)}
+        output = {'connected': result.get('connected', False), 'epoch': result.get('epoch')}
+        if 'error' in result:
+            output['error'] = result['error']
+        print(dumps(output))
         return 0 if result.get('connected') and 'error' not in result else 1
     for key, target in [('params_file', 'params'), ('result_file', 'result')]:
         if key in a:
             path = a.pop(key)
             a[target] = json.load(sys.stdin) if path == '-' else json.loads(Path(path).read_text())
-    result = client({'op': cmd, **a})
+    try:
+        result = client({'op': cmd, **a})
+    except Exception as exc:
+        if cmd != 'poll':
+            raise
+        result = {'error': str(exc)}
+    if cmd == 'poll' and 'error' in result:
+        result['coverage'] = COVERAGE
     print(dumps(result))
     return 1 if 'error' in result or (cmd == 'status' and not result.get('connected')) else 0
 
