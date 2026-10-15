@@ -9,7 +9,7 @@
 
 ### bullboard
 
-用于通过 Bull Board HTTP API 和 curl 查询 BullMQ 队列、任务进度、结果、失败原因与日志，以及执行已授权的重试、暂停、恢复和清理操作。使用时配置 `BULL_URL`、`BULL_USER`、`BULL_PASSWORLD`（保留此拼写），并核对目标部署的认证方式和接口能力。
+用于通过 Bull Board HTTP API 和 curl 查询 BullMQ 队列、任务进度、结果、失败原因与日志，以及执行已授权的重试、暂停、恢复和清理操作。使用时配置 `BULL_URL`、`BULL_USER`、`BULL_PASSWORD`，并核对目标部署的认证方式和接口能力。
 
 [执行流程](skills/bullboard/SKILL.md)与 [HTTP API 参考](skills/bullboard/references/http-api.md)说明了认证、查询和写操作边界；仅在用户明确要求时等待任务完成。凭据不写入 skill，任务数据和错误只输出必要的脱敏摘要。
 
@@ -31,6 +31,10 @@ Claude 或其他主助手收到用户消息时，默认通过本机共享 Codex 
 用于检查并纠正 dont-do-that packaging 问题，包括过度封装、过度抽象、薄 helper、薄类型拆分、单次引用 enum / 常量、实例属性绕传参数，以及 React 组件、前端 util 和 Node.js 后台分层的职责放置问题。
 
 通用判断流程保留在 `SKILL.md`；React 专项规则位于 `references/react/index.md`，Node.js 后台专项规则位于 `references/nodejs/index.md`。执行前应先读取目标仓库的 `CLAUDE.md`、`AGENTS.md` 和相关模块说明，项目内更具体的规范优先。
+
+### jenkins
+
+通过 Jenkins Remote Access API 和 curl 查询任务、构建、日志、Revision 和制品，并执行已授权的构建及配置操作。见 [SKILL.md](skills/jenkins/SKILL.md) 和 [API 参考](skills/jenkins/references/remote-access-api.md)。当前副本保留了来源项目的文档路径和环境约定，尚未通用化。
 
 ### kysely-schema
 

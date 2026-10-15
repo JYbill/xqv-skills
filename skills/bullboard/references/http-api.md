@@ -20,7 +20,7 @@ export BULL_CURL_CONFIG="$bull_tmp_dir/auth.conf"
 node --input-type=module <<'JS_AUTH'
 import { writeFileSync } from 'node:fs';
 
-for (const key of ['BULL_URL', 'BULL_USER', 'BULL_PASSWORLD']) {
+for (const key of ['BULL_URL', 'BULL_USER', 'BULL_PASSWORD']) {
   const value = process.env[key];
   if (!value || /[\r\n\0]/.test(value)) {
     throw new Error(key + ' 缺失或包含非法字符');
@@ -31,7 +31,7 @@ if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password 
   throw new Error('BULL_URL 必须是无凭据、查询参数和片段的 HTTP(S) 面板地址');
 }
 const user = process.env.BULL_USER;
-const secret = process.env.BULL_PASSWORLD;
+const secret = process.env.BULL_PASSWORD;
 if (user.includes(':') || secret.includes(':')) {
   throw new Error('此示例保守拒绝含冒号的凭据；先核对目标认证中间件的解析规则');
 }
