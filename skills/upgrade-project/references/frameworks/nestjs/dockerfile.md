@@ -28,7 +28,9 @@ COPY pnpm-lock.yaml .
 COPY pnpm-workspace.yaml .
 RUN pnpm --version
 RUN pnpm config list
-RUN pnpm install --frozen-lockfile && pnpm store prune
+# 开发和生产依赖安装共用 pnpm store，复用已下载的包。
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+  pnpm install --frozen-lockfile --store-dir=/pnpm/store
 COPY prisma.config.ts .
 COPY prisma prisma
 COPY env env
@@ -85,7 +87,8 @@ RUN npm pkg delete scripts.prepare
 COPY --from=build /app/.npmrc .
 COPY --from=build /app/pnpm-lock.yaml .
 COPY --from=build /app/pnpm-workspace.yaml .
-RUN pnpm install --prod --frozen-lockfile && pnpm store prune
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+  pnpm install --prod --frozen-lockfile --store-dir=/pnpm/store
 COPY --from=build /app/pm2.config.cjs .
 COPY --from=build /app/dist dist
 
