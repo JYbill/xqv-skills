@@ -32,6 +32,10 @@ Claude 或其他主助手收到用户消息时，默认通过本机共享 Codex 
 
 通用判断流程保留在 `SKILL.md`；React 专项规则位于 `references/react/index.md`，Node.js 后台专项规则位于 `references/nodejs/index.md`。执行前应先读取目标仓库的 `CLAUDE.md`、`AGENTS.md` 和相关模块说明，项目内更具体的规范优先。
 
+### droid
+
+用于通过 Factory Droid CLI 创建或续接会话、执行任务、查看本地记录，以及接收 AskUser 和权限请求。默认使用 Claude Sonnet 5.5 xhigh；确认标准额度耗尽后回退到 Kimi K3.1 Pro。[SKILL.md](skills/droid/SKILL.md) 说明常用命令与执行范围，[交互协议](skills/droid/references/stream-jsonrpc.md)说明长驻进程、问题答复和断线处理；不要求安装 SDK 或额外服务。
+
 ### jenkins
 
 通过 Jenkins Remote Access API 和 curl 查询任务、构建、日志、Revision 和制品，并执行已授权的构建及配置操作。见 [SKILL.md](skills/jenkins/SKILL.md) 和 [API 参考](skills/jenkins/references/remote-access-api.md)。当前副本保留了来源项目的文档路径和环境约定，尚未通用化。
