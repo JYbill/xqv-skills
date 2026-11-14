@@ -19,6 +19,10 @@ Claude 或其他主助手收到用户消息时，默认通过本机共享 Codex 
 
 两种模式的 ASCII 流程图及调用方式见 [SKILL.md](skills/codex/SKILL.md)，公共参数与仅派发模板见 [cli-examples.md](skills/codex/references/cli-examples.md)，持续追踪与人工处理见 [tracking-examples.md](skills/codex/references/tracking-examples.md)，查询与归档见 [session-examples.md](skills/codex/references/session-examples.md)，协议、故障处理和验证范围见 [protocol.md](skills/codex/references/protocol.md)。持续追踪以 `bridge.py` 为统一入口，客户端、后台服务、存储和通信已拆分，安装时需保留整个技能目录。默认累计 50 条关键事件返回，审批、结构化提问和轮次结束提前返回；轮次结束后桥接退出，仍可读取临时 SQLite。仅派发使用原生 Codex CLI，不启动桥接、不写桥接 SQLite。用户显式指定模型、推理强度、Fast 或普通模式时，新会话在创建时传入设置，已有会话用短连接更新并回读，核对后再派发消息。主助手不自动代用户审批或回答。
 
+### codex-images-gen
+
+使用当前 Codex provider 的 Images API 生成或编辑图片，按当前会话选择模型，支持品质、尺寸和单次多图请求。配置、调用方法及实测限制见 [SKILL.md](skills/codex-images-gen/SKILL.md)。
+
 ### coding-with-plan
 
 用于执行用户已确认的 plan 文件，由主 Agent 负责实现、测试、自验、处理用户调整和交付，默认只创建一个独立 Review Agent 只读评审。编码任务可并行拆分且符合授权时，允许创建多个 Coding 子 Agent，主 Agent 负责整合、跨部分验证和最终交付。
