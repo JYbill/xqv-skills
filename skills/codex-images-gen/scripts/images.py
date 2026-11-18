@@ -15,6 +15,9 @@ import urllib.request
 import uuid
 
 
+IMAGE_MODEL = "gpt-6.2-sol"
+
+
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
@@ -28,7 +31,7 @@ def fail(message):
 def arguments():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--provider", required=True)
-    parser.add_argument("--model", required=True)
+    parser.add_argument("--model", choices=(IMAGE_MODEL,), default=IMAGE_MODEL)
     parser.add_argument("--prompt", required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--image", type=Path)
@@ -56,6 +59,8 @@ def main():
     parts = urllib.parse.urlsplit(base_url)
     if parts.scheme not in ("http", "https") or not parts.netloc or parts.username or parts.password or parts.query or parts.fragment:
         fail("Provider base_url must be an HTTP(S) URL without credentials, query, or fragment.")
+    if not parts.path.endswith("/v1"):
+        base_url += "/v1"
 
     headers = dict(provider.get("http_headers", {}))
     for header, env_name in provider.get("env_http_headers", {}).items():
